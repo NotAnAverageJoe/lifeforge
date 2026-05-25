@@ -1,0 +1,57 @@
+export type FrequencyType = 'daily' | 'weekly' | 'multiple';
+
+export type Habit = {
+  id: string;
+  name: string;
+  color: string;
+  frequency: FrequencyType;
+  timesPerDay: number;
+  scheduledDays?: number[]; // weekly only: 1=Sun 2=Mon 3=Tue 4=Wed 5=Thu 6=Fri 7=Sat
+  reminder: string | null; // 'HH:MM'
+  notificationIds: string[];
+  completions: Record<string, number>; // 'YYYY-MM-DD' -> count
+  createdAt: string;
+  linkedAbility?: keyof AbilityScores;
+};
+
+export type Gender = 'male' | 'female' | 'non-binary' | 'prefer not to say';
+
+export type AbilityScores = {
+  strength: number;
+  dexterity: number;
+  constitution: number;
+  intelligence: number;
+  wisdom: number;
+  charisma: number;
+};
+
+export type CharacterClass = 'warrior' | 'rogue' | 'mage' | 'cleric' | 'ranger' | 'bard';
+
+export type Character = {
+  name: string;
+  birthday: string; // YYYY-MM-DD
+  gender: Gender;
+  abilities: AbilityScores;
+  characterClass: CharacterClass;
+  abilityXp?: Partial<Record<keyof AbilityScores, number>>;
+};
+
+export type AppState = {
+  habits: Habit[];
+  totalXp: number;
+  pendingLevelUp: number | null;
+  character: Character | null;
+  isLoaded: boolean;
+};
+
+export type RootStackParamList = {
+  MainTabs: undefined;
+  HabitForm: { habitId?: string };
+  AbilityDetail: { ability: keyof AbilityScores };
+};
+
+export type TabParamList = {
+  Quests: undefined;
+  Chronicle: undefined;
+  Hero: undefined;
+};
