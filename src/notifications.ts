@@ -1,19 +1,26 @@
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import type { Habit } from './types';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Expo Go dropped expo-notifications support in SDK 53. Skip all notification
+// setup when running there so the app works without errors during development.
+const IS_EXPO_GO = Constants.appOwnership === 'expo';
+
+if (!IS_EXPO_GO) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export async function requestNotificationPermission(): Promise<boolean> {
-  if (Platform.OS === 'web') return false;
+  if (Platform.OS === 'web' || IS_EXPO_GO) return false;
   const { status: existing } = await Notifications.getPermissionsAsync();
   if (existing === 'granted') return true;
   const { status } = await Notifications.requestPermissionsAsync({
@@ -23,7 +30,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 export async function scheduleHabitReminder(habit: Habit): Promise<string[]> {
-  if (!habit.reminder) return [];
+  if (!habit.reminder || IS_EXPO_GO) return [];
   const permitted = await requestNotificationPermission();
   if (!permitted) return [];
 
@@ -37,7 +44,7 @@ export async function scheduleHabitReminder(habit: Habit): Promise<string[]> {
     const ids = await Promise.all(
       days.map(weekday =>
         Notifications.scheduleNotificationAsync({
-          content: { title: habit.name, body: "Don't forget your habit today!" },
+          content: { title: habit.name, body: 'Starting in 5 minutes!' },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
             weekday,
@@ -51,7 +58,7 @@ export async function scheduleHabitReminder(habit: Habit): Promise<string[]> {
   }
 
   const id = await Notifications.scheduleNotificationAsync({
-    content: { title: habit.name, body: 'Time to complete your habit!' },
+    content: { title: habit.name, body: 'Starting in 5 minutes!' },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour,
@@ -61,7 +68,34 @@ export async function scheduleHabitReminder(habit: Habit): Promise<string[]> {
   return [id];
 }
 
+export async function notifyCampaignAvailable(campaignTitle: string): Promise<void> {
+  if (IS_EXPO_GO) return;
+  const permitted = await requestNotificationPermission();
+  if (!permitted) return;
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '⚔️ New Campaign Available!',
+      body: `"${campaignTitle}" is ready. Your adventure awaits.`,
+    },
+    trigger: null,
+  });
+}
+
+export async function notifyChapterAvailable(campaignTitle: string, chapterName: string): Promise<void> {
+  if (IS_EXPO_GO) return;
+  const permitted = await requestNotificationPermission();
+  if (!permitted) return;
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: `📖 New Chapter: ${chapterName}`,
+      body: `A new chapter has opened in "${campaignTitle}". Continue your journey.`,
+    },
+    trigger: null,
+  });
+}
+
 export async function cancelHabitReminders(notificationIds: string[]): Promise<void> {
+  if (IS_EXPO_GO) return;
   await Promise.all(notificationIds.map(id => Notifications.cancelScheduledNotificationAsync(id)));
 }
 
@@ -69,6 +103,7 @@ const DAILY_NUDGE_KEY = 'daily_nudge_id';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export async function scheduleDailyNudge(): Promise<void> {
+  if (IS_EXPO_GO) return;
   const permitted = await requestNotificationPermission();
   if (!permitted) return;
 

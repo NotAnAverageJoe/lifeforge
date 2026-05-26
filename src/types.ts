@@ -7,6 +7,7 @@ export type Habit = {
   frequency: FrequencyType;
   timesPerDay: number;
   scheduledDays?: number[]; // weekly only: 1=Sun 2=Mon 3=Tue 4=Wed 5=Thu 6=Fri 7=Sat
+  scheduledTime?: string | null; // 'HH:MM' — when the habit takes place (display only)
   reminder: string | null; // 'HH:MM'
   notificationIds: string[];
   completions: Record<string, number>; // 'YYYY-MM-DD' -> count
@@ -48,10 +49,22 @@ export type RootStackParamList = {
   MainTabs: undefined;
   HabitForm: { habitId?: string };
   AbilityDetail: { ability: keyof AbilityScores };
+  Calendar: undefined;
+};
+
+export type CampaignStatus = 'coming_soon' | 'available' | 'in_progress' | 'completed';
+
+export type Campaign = {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  icon: string;
+  status: CampaignStatus;
 };
 
 export type TabParamList = {
-  Quests: undefined;
-  Chronicle: undefined;
+  SideQuests: undefined;
+  Campaigns: undefined;
   Hero: undefined;
 };

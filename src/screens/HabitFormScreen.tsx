@@ -16,20 +16,28 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   cancelHabitReminders,
   scheduleHabitReminder,
 } from '../notifications';
 import { ABILITY_META, ABILITY_ORDER } from '../data/onboarding';
 import { useAppStore } from '../store';
-import { BG, BORDER, GOLD, GOLD_DIM, SURFACE, SURFACE2, TEXT, TEXT_DIM, TEXT_MUTED } from '../theme';
+import { BG, BORDER, GOLD, GOLD_DIM, SEPARATOR, SURFACE, SURFACE2, TEXT, TEXT_DIM, TEXT_MUTED } from '../theme';
 import type { AbilityScores, FrequencyType, Habit, RootStackParamList } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'HabitForm'>;
 type Route = RouteProp<RootStackParamList, 'HabitForm'>;
 
-const COLORS = ['#8B1A1A', '#C9A84C', '#2D5016', '#1A2C5C', '#4A1A5C', '#8B6914'];
+const QUICK_HABITS: { name: string; ability: keyof AbilityScores }[] = [
+  { name: 'Go to the gym',      ability: 'strength' },
+  { name: 'Morning stretch',    ability: 'dexterity' },
+  { name: 'Sleep 8 hours',      ability: 'constitution' },
+  { name: 'Read 20 minutes',    ability: 'intelligence' },
+  { name: 'Meditate',           ability: 'wisdom' },
+  { name: 'Call a friend',      ability: 'charisma' },
+];
+
 const FREQ_OPTIONS: { key: FrequencyType; label: string }[] = [
   { key: 'daily', label: 'Daily' },
   { key: 'weekly', label: 'Weekly' },
@@ -53,8 +61,10 @@ export default function HabitFormScreen() {
   const editId = route.params?.habitId;
   const existing = editId ? state.habits.find(h => h.id === editId) : undefined;
 
+  const insets = useSafeAreaInsets();
+
   const [name, setName] = useState(existing?.name ?? '');
-  const [color, setColor] = useState(existing?.color ?? COLORS[0]);
+  const [color] = useState(existing?.color ?? GOLD);
   const [frequency, setFrequency] = useState<FrequencyType>(existing?.frequency ?? 'daily');
   const [timesPerDay, setTimesPerDay] = useState(existing?.timesPerDay ?? 2);
   const [scheduledDays, setScheduledDays] = useState<number[]>(existing?.scheduledDays ?? [2]);
@@ -69,10 +79,10 @@ export default function HabitFormScreen() {
         : [...days, v].sort((a, b) => a - b)
     );
   }
-  const [reminderOn, setReminderOn] = useState(!!existing?.reminder);
-  const [reminderTime, setReminderTime] = useState<Date>(() => {
-    if (existing?.reminder) {
-      const [h, m] = existing.reminder.split(':').map(Number);
+  const [scheduledTimeOn, setScheduledTimeOn] = useState(!!existing?.scheduledTime);
+  const [scheduledTime, setScheduledTime] = useState<Date>(() => {
+    if (existing?.scheduledTime) {
+      const [h, m] = existing.scheduledTime.split(':').map(Number);
       const d = new Date();
       d.setHours(h, m, 0, 0);
       return d;
@@ -81,19 +91,48 @@ export default function HabitFormScreen() {
     d.setHours(9, 0, 0, 0);
     return d;
   });
-  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showScheduledTimePicker, setShowScheduledTimePicker] = useState(false);
+  const scheduledTimeLabel = scheduledTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
-  const timeLabel = reminderTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const [reminderOn, setReminderOn] = useState(!!existing?.reminder);
+
+  async function handleQuickAdd(qh: typeof QUICK_HABITS[0]) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const habit: Habit = {
+      id: Date.now().toString(),
+      name: qh.name,
+      color: ABILITY_META[qh.ability].color,
+      frequency: 'daily',
+      timesPerDay: 1,
+      scheduledTime: null,
+      reminder: null,
+      notificationIds: [],
+      completions: {},
+      createdAt: new Date().toISOString(),
+      linkedAbility: qh.ability,
+    };
+    addHabit(habit);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    navigation.goBack();
+  }
 
   async function handleSave() {
     const trimmed = name.trim();
     if (!trimmed) {
-      Alert.alert('A quest must have a name.');
+      Alert.alert('A side quest must have a name.');
       return;
     }
 
-    const reminderStr = reminderOn
-      ? `${String(reminderTime.getHours()).padStart(2, '0')}:${String(reminderTime.getMinutes()).padStart(2, '0')}`
+    const scheduledTimeStr = scheduledTimeOn
+      ? `${String(scheduledTime.getHours()).padStart(2, '0')}:${String(scheduledTime.getMinutes()).padStart(2, '0')}`
+      : null;
+
+    const reminderStr = reminderOn && scheduledTimeOn
+      ? (() => {
+          const d = new Date(scheduledTime);
+          d.setMinutes(d.getMinutes() - 5);
+          return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        })()
       : null;
 
     if (existing) {
@@ -107,6 +146,7 @@ export default function HabitFormScreen() {
         frequency,
         timesPerDay: frequency === 'multiple' ? timesPerDay : 1,
         scheduledDays: frequency === 'weekly' ? scheduledDays : undefined,
+        scheduledTime: scheduledTimeStr,
         reminder: reminderStr,
         notificationIds: [],
         linkedAbility,
@@ -121,6 +161,7 @@ export default function HabitFormScreen() {
         frequency,
         timesPerDay: frequency === 'multiple' ? timesPerDay : 1,
         scheduledDays: frequency === 'weekly' ? scheduledDays : undefined,
+        scheduledTime: scheduledTimeStr,
         reminder: reminderStr,
         notificationIds: [],
         completions: {},
@@ -136,14 +177,49 @@ export default function HabitFormScreen() {
   }
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={s.safe} edges={['top']}>
       <StatusBar barStyle="light-content" />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-          <Text style={s.heading}>{existing ? 'Edit Quest' : 'New Quest'}</Text>
+          <Text style={s.heading}>{existing ? 'Edit Side Quest' : 'New Side Quest'}</Text>
+
+          {/* Quick Habits — new only */}
+          {!existing && (
+            <>
+              <Text style={s.label}>Quick Habits</Text>
+              <Text style={[s.sublabel, { marginTop: -6, marginBottom: 12 }]}>One tap to forge an instant quest</Text>
+              {[QUICK_HABITS.slice(0, 3), QUICK_HABITS.slice(3)].map((row, ri) => (
+                <View key={ri} style={s.quickRow}>
+                  {row.map(qh => {
+                    const meta = ABILITY_META[qh.ability];
+                    return (
+                      <Pressable
+                        key={qh.ability}
+                        style={({ pressed }) => [
+                          s.quickCard,
+                          { borderColor: meta.color + '60', backgroundColor: meta.color + '12' },
+                          pressed && { opacity: 0.7 },
+                        ]}
+                        onPress={() => handleQuickAdd(qh)}
+                      >
+                        <Text style={s.quickCardIcon}>{meta.icon}</Text>
+                        <Text style={[s.quickCardAbility, { color: meta.color }]}>{meta.abbr}</Text>
+                        <Text style={s.quickCardName}>{qh.name}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ))}
+              <View style={s.orRow}>
+                <View style={s.orLine} />
+                <Text style={s.orLabel}>OR BUILD YOUR OWN</Text>
+                <View style={s.orLine} />
+              </View>
+            </>
+          )}
 
           {/* Name */}
-          <Text style={s.label}>Quest Name</Text>
+          <Text style={s.label}>Side Quest Name</Text>
           <TextInput
             style={s.input}
             value={name}
@@ -153,22 +229,6 @@ export default function HabitFormScreen() {
             maxLength={60}
             autoFocus={!existing}
           />
-
-          {/* Color — hidden when an ability is linked (uses ability color) */}
-          {!linkedAbility && (
-            <>
-              <Text style={s.label}>Sigil Color</Text>
-              <View style={s.colorRow}>
-                {COLORS.map(c => (
-                  <Pressable
-                    key={c}
-                    style={[s.colorDot, { backgroundColor: c }, color === c && s.colorSelected]}
-                    onPress={() => setColor(c)}
-                  />
-                ))}
-              </View>
-            </>
-          )}
 
           {/* Frequency */}
           <Text style={s.label}>Recurrence</Text>
@@ -245,53 +305,70 @@ export default function HabitFormScreen() {
             })}
           </View>
 
-          {/* Reminder */}
-          <View style={s.reminderRow}>
-            <Text style={s.label}>Reminder Bell</Text>
+          {/* Scheduled Time */}
+          <View style={s.toggleRow}>
+            <Text style={s.label}>Scheduled Time</Text>
             <Switch
-              value={reminderOn}
-              onValueChange={setReminderOn}
+              value={scheduledTimeOn}
+              onValueChange={setScheduledTimeOn}
               trackColor={{ true: effectiveColor }}
               thumbColor={TEXT}
             />
           </View>
+          <Text style={[s.sublabel, { marginTop: -8 }]}>When this habit takes place each day</Text>
 
-          {reminderOn && (
+          {scheduledTimeOn && (
             Platform.OS === 'ios' ? (
               <DateTimePicker
-                value={reminderTime}
+                value={scheduledTime}
                 mode="time"
                 display="spinner"
-                onChange={(_, date) => { if (date) setReminderTime(date); }}
+                onChange={(_, date) => { if (date) setScheduledTime(date); }}
                 style={{ marginBottom: 16 }}
               />
             ) : (
               <>
-                <Pressable style={[s.timeBtn, { borderColor: effectiveColor }]} onPress={() => setShowTimePicker(true)}>
-                  <Text style={[s.timeBtnText, { color: effectiveColor }]}>🔔  {timeLabel}</Text>
+                <Pressable style={[s.timeBtn, { borderColor: effectiveColor }]} onPress={() => setShowScheduledTimePicker(true)}>
+                  <Text style={[s.timeBtnText, { color: effectiveColor }]}>🕐  {scheduledTimeLabel}</Text>
                 </Pressable>
-                {showTimePicker && (
+                {showScheduledTimePicker && (
                   <DateTimePicker
-                    value={reminderTime}
+                    value={scheduledTime}
                     mode="time"
                     display="default"
                     onChange={(event, date) => {
-                      setShowTimePicker(false);
-                      if (event.type === 'set' && date) setReminderTime(date);
+                      setShowScheduledTimePicker(false);
+                      if (event.type === 'set' && date) setScheduledTime(date);
                     }}
                   />
                 )}
               </>
             )
           )}
+
+          {/* Reminder */}
+          {scheduledTimeOn && (
+            <Pressable style={s.checkboxRow} onPress={() => setReminderOn(v => !v)}>
+              <View style={[s.checkbox, reminderOn && { backgroundColor: effectiveColor, borderColor: effectiveColor }]}>
+                {reminderOn && <Text style={s.checkboxMark}>✓</Text>}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.label}>Set reminder</Text>
+                <Text style={s.sublabel}>Notifies 5 minutes before scheduled time</Text>
+              </View>
+            </Pressable>
+          )}
         </ScrollView>
 
-        <View style={s.footer}>
-          <Pressable style={s.cancelBtn} onPress={() => navigation.goBack()}>
+        <View style={[s.footer, { paddingBottom: Math.max(8, Math.floor(insets.bottom / 2)) }]}>
+          <Pressable
+            style={({ pressed }) => [s.cancelBtn, pressed && { opacity: 0.6 }]}
+            onPress={() => navigation.goBack()}
+          >
             <Text style={s.cancelText}>Retreat</Text>
           </Pressable>
           <Pressable style={[s.saveBtn, { backgroundColor: effectiveColor }]} onPress={handleSave}>
-            <Text style={s.saveText}>{existing ? 'Save Changes' : 'Forge Quest'}</Text>
+            <Text style={s.saveText}>{existing ? 'Save Changes' : 'Forge Side Quest'}</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -321,9 +398,17 @@ const s = StyleSheet.create({
     color: TEXT,
     marginBottom: 20,
   },
-  colorRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
-  colorDot: { width: 32, height: 32, borderRadius: 16 },
-  colorSelected: { borderWidth: 3, borderColor: GOLD },
+  quickRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  quickCard: {
+    flex: 1, borderRadius: 10, borderWidth: 1,
+    paddingVertical: 12, paddingHorizontal: 4, alignItems: 'center', gap: 4,
+  },
+  quickCardIcon: { fontSize: 20 },
+  quickCardAbility: { fontSize: 8, fontWeight: '800', letterSpacing: 1.5 },
+  quickCardName: { fontSize: 10, color: TEXT_DIM, textAlign: 'center', lineHeight: 14, fontWeight: '600' },
+  orRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, marginBottom: 20 },
+  orLine: { flex: 1, height: 1, backgroundColor: SEPARATOR },
+  orLabel: { fontSize: 9, fontWeight: '800', color: TEXT_MUTED, letterSpacing: 1.5 },
   segRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   seg: {
     flex: 1,
@@ -376,12 +461,29 @@ const s = StyleSheet.create({
   },
   abilChipIcon: { fontSize: 14 },
   abilChipText: { fontSize: 12, fontWeight: '700', color: TEXT_DIM, letterSpacing: 0.5 },
-  reminderRow: {
+  toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 20,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  checkboxMark: { color: TEXT, fontSize: 13, fontWeight: '700' },
   timeBtn: {
     borderRadius: 10,
     borderWidth: 1,
@@ -393,7 +495,8 @@ const s = StyleSheet.create({
   timeBtnText: { fontSize: 15, fontWeight: '600' },
   footer: {
     flexDirection: 'row',
-    padding: 20,
+    paddingTop: 10,
+    paddingHorizontal: 16,
     gap: 12,
     backgroundColor: BG,
     borderTopWidth: 1,
@@ -401,7 +504,7 @@ const s = StyleSheet.create({
   },
   cancelBtn: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 11,
     borderRadius: 12,
     backgroundColor: SURFACE,
     alignItems: 'center',
@@ -409,6 +512,6 @@ const s = StyleSheet.create({
     borderColor: BORDER,
   },
   cancelText: { fontWeight: '700', color: TEXT_DIM, fontSize: 15, letterSpacing: 0.5 },
-  saveBtn: { flex: 2, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  saveBtn: { flex: 2, paddingVertical: 11, borderRadius: 12, alignItems: 'center' },
   saveText: { fontWeight: '700', color: TEXT, fontSize: 15, letterSpacing: 0.5 },
 });

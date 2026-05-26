@@ -380,16 +380,20 @@ function AbilitiesStep({
   );
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const isTransitioning = useRef(false);
 
-  const q = QUESTIONS[currentQ];
   const totalQ = QUESTIONS.length;
+  const safeQ = Math.max(0, Math.min(currentQ, totalQ - 1));
+  const q = QUESTIONS[safeQ];
 
   function animateTransition(updateFn: () => void) {
+    isTransitioning.current = true;
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 0, duration: 130, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: -12, duration: 130, useNativeDriver: true }),
     ]).start(() => {
       updateFn();
+      isTransitioning.current = false;
       slideAnim.setValue(14);
       Animated.parallel([
         Animated.timing(fadeAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
@@ -400,29 +404,31 @@ function AbilitiesStep({
 
   function handleSlider(val: number) {
     const next = [...answers];
-    next[currentQ] = val;
+    next[safeQ] = val;
     setAnswers(next);
   }
 
   function handleNext() {
+    if (isTransitioning.current) return;
     Haptics.selectionAsync();
     if (currentQ < totalQ - 1) {
-      animateTransition(() => setCurrentQ(q => q + 1));
+      animateTransition(() => setCurrentQ(prev => prev + 1));
     } else {
       onNext(answers);
     }
   }
 
   function goBack() {
+    if (isTransitioning.current) return;
     if (currentQ > 0) {
-      animateTransition(() => setCurrentQ(q => q - 1));
+      animateTransition(() => setCurrentQ(prev => prev - 1));
     } else {
       onBack();
     }
   }
 
   const progressColor = ABILITY_META[q.ability].color;
-  const selectedLabel = q.options[answers[currentQ] - 1];
+  const selectedLabel = q.options[answers[safeQ] - 1];
 
   return (
     <SafeAreaView style={ab.safe}>

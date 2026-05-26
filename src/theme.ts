@@ -1,18 +1,19 @@
-// Mystic blue-purple-gold
-export const BG = '#0D0B1E';
-export const SURFACE = '#16133A';
-export const SURFACE2 = '#1E1A4A';
-export const BORDER = '#2D2860';
+// D&D Beyond-inspired dark fantasy — deep neutral darks, gold & crimson
+export const BG = '#0D0F18';
+export const SURFACE = '#161A26';
+export const SURFACE2 = '#1C2034';
+export const BORDER = '#272B42';
+export const SEPARATOR = '#1E2238';
 export const GOLD = '#C9A84C';
-export const GOLD_DIM = '#C9A84C22';
+export const GOLD_DIM = '#C9A84C20';
 export const PURPLE = '#7B5EA7';
-export const PURPLE_DIM = '#7B5EA722';
+export const PURPLE_DIM = '#7B5EA720';
 export const BLUE = '#4A7FC1';
-export const CRIMSON = '#8B1A4A';
-export const CRIMSON_LIGHT = '#B02070';
-export const TEXT = '#E4DFFF';
-export const TEXT_DIM = '#7B74B8';
-export const TEXT_MUTED = '#4A4570';
-export const DONE_BG = '#0D1A40';
-export const DONE_FG = '#5BAADD';
-export const EDIT_BG = '#1A1540';
+export const CRIMSON = '#A31E2D';
+export const CRIMSON_LIGHT = '#D43050';
+export const TEXT = '#EEF0F8';
+export const TEXT_DIM = '#8690B0';
+export const TEXT_MUTED = '#484E6A';
+export const DONE_BG = '#0A1D18';
+export const DONE_FG = '#4EC9A0';
+export const EDIT_BG = '#151830';

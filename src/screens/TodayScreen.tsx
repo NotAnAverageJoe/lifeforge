@@ -9,15 +9,17 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  View,
   TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HabitRow from '../components/HabitRow';
 import { ABILITY_META, ABILITY_ORDER, CLASSES } from '../data/onboarding';
 import { isDoneToday, isScheduledForDate, todayKey } from '../dates';
 import { useAppStore } from '../store';
-import { BG, BORDER, GOLD, SURFACE, SURFACE2, TEXT, TEXT_DIM, TEXT_MUTED } from '../theme';
+import {
+  BG, BORDER, GOLD, SEPARATOR, SURFACE, SURFACE2, TEXT, TEXT_DIM, TEXT_MUTED,
+} from '../theme';
 import type { Character, Habit, RootStackParamList } from '../types';
 import { getAbilityLevelInfo, getLevelInfo } from '../xp';
 
@@ -63,11 +65,8 @@ export default function TodayScreen() {
       if (!habit) return;
       const wasDone = isDoneToday(habit);
       toggleCompletion(id);
-      if (!wasDone) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } else {
-        Haptics.selectionAsync();
-      }
+      if (!wasDone) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      else Haptics.selectionAsync();
     },
     [habits, toggleCompletion]
   );
@@ -86,35 +85,42 @@ export default function TodayScreen() {
   );
 
   const dayLabel = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
+    weekday: 'long', month: 'long', day: 'numeric',
   });
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={s.safe} edges={['top']}>
       <StatusBar barStyle="light-content" />
 
       <View style={s.header}>
-        <View>
-          <Text style={s.title}>Daily Quests</Text>
+        <View style={s.headerLeft}>
+          <Text style={s.title}>SIDE QUESTS</Text>
           <Text style={s.date}>{dayLabel}</Text>
         </View>
         <View style={s.headerRight}>
           {todayHabits.length > 0 && (
-            <Text style={s.counter}>{doneCount}/{todayHabits.length}</Text>
+            <View style={s.progressPill}>
+              <Text style={s.progressDone}>{doneCount}</Text>
+              <Text style={s.progressSep}> / </Text>
+              <Text style={s.progressTotal}>{todayHabits.length}</Text>
+            </View>
           )}
-          {offDayHabits.length > 0 && (
-            <Pressable onPress={() => setShowAll(v => !v)}>
-              <Text style={s.showAllBtn}>{showAll ? 'Today only' : 'Show all'}</Text>
+          <View style={s.headerActions}>
+            {offDayHabits.length > 0 && (
+              <Pressable onPress={() => setShowAll(v => !v)}>
+                <Text style={s.showAllBtn}>{showAll ? 'TODAY' : 'ALL'}</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={() => navigation.navigate('Calendar')} hitSlop={8}>
+              <Text style={s.calIcon}>📅</Text>
             </Pressable>
-          )}
+          </View>
         </View>
       </View>
 
-      {character && <CharacterBanner character={character} totalXp={totalXp} />}
+      <View style={s.headerRule} />
 
-      <View style={s.divider} />
+      {character && <CharacterBanner character={character} totalXp={totalXp} />}
 
       <FlatList
         data={listData}
@@ -124,9 +130,9 @@ export default function TodayScreen() {
           <View style={s.emptyWrap}>
             <Text style={s.emptyIcon}>⚔️</Text>
             {habits.length > 0 ? (
-              <Text style={s.emptyText}>All clear for today.{'\n'}Tap "Show all" to manage your quests.</Text>
+              <Text style={s.emptyText}>All clear for today.{'\n'}Tap "ALL" to view other quests.</Text>
             ) : (
-              <Text style={s.emptyText}>No quests yet.{'\n'}Tap + to forge your first one.</Text>
+              <Text style={s.emptyText}>No side quests yet.{'\n'}Tap + to forge your first one.</Text>
             )}
           </View>
         }
@@ -134,7 +140,9 @@ export default function TodayScreen() {
           if (item.type === 'section') {
             return (
               <View style={s.sectionHeader}>
+                <View style={s.sectionLine} />
                 <Text style={s.sectionTitle}>{item.title}</Text>
+                <View style={s.sectionLine} />
               </View>
             );
           }
@@ -179,18 +187,22 @@ function CharacterBanner({ character, totalXp }: { character: Character; totalXp
 
   return (
     <View style={cb.card}>
+      {/* Identity row */}
       <View style={cb.topRow}>
-        <Text style={cb.classIcon}>{classDef.icon}</Text>
+        <View style={cb.iconCircle}>
+          <Text style={cb.classIcon}>{classDef.icon}</Text>
+        </View>
         <View style={cb.nameBlock}>
-          <Text style={cb.charName}>{character.name}</Text>
-          <Text style={cb.classLabel}>{classDef.name}</Text>
+          <Text style={cb.charName} numberOfLines={1}>{character.name}</Text>
+          <Text style={cb.classLabel}>{classDef.name.toUpperCase()}</Text>
         </View>
         <View style={cb.rankBadge}>
           <Text style={cb.rankNum}>{level}</Text>
-          <Text style={cb.rankLabel}>RANK</Text>
+          <Text style={cb.rankSub}>RANK</Text>
         </View>
       </View>
 
+      {/* XP progress */}
       <View style={cb.xpRow}>
         <View style={cb.xpTrack}>
           <Animated.View
@@ -200,10 +212,11 @@ function CharacterBanner({ character, totalXp }: { character: Character; totalXp
             ]}
           />
         </View>
-        <Text style={cb.xpLabel}>{currentXp}/{nextLevelXp} XP</Text>
+        <Text style={cb.xpLabel}>{currentXp.toLocaleString()} / {nextLevelXp.toLocaleString()} XP</Text>
       </View>
 
-      <View style={cb.abilGridRow}>
+      {/* Ability score circles — D&D Beyond style */}
+      <View style={cb.abilRow}>
         {ABILITY_ORDER.map(key => {
           const meta = ABILITY_META[key];
           const abilXp = character.abilityXp?.[key] ?? 0;
@@ -212,14 +225,14 @@ function CharacterBanner({ character, totalXp }: { character: Character; totalXp
           return (
             <TouchableOpacity
               key={key}
-              style={[cb.abilBox, { borderColor: meta.color + '50' }]}
+              style={[cb.abilBox, { borderColor: meta.color + '55' }]}
               onPress={() => navigation.navigate('AbilityDetail', { ability: key })}
               activeOpacity={0.75}
             >
               <Text style={[cb.abilAbbr, { color: meta.color }]}>{meta.abbr}</Text>
-              <Text style={[cb.abilLevel, { color: meta.color }]}>Lv {aLevel}</Text>
+              <Text style={[cb.abilLevel, { color: meta.color }]}>{aLevel}</Text>
               <View style={cb.abilBar}>
-                <View style={[cb.abilBarFill, { width: `${aPct * 100}%`, backgroundColor: meta.color }]} />
+                <View style={[cb.abilFill, { width: `${aPct * 100}%`, backgroundColor: meta.color }]} />
               </View>
             </TouchableOpacity>
           );
@@ -232,107 +245,88 @@ function CharacterBanner({ character, totalXp }: { character: Character; totalXp
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
   header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10,
   },
-  title: { fontSize: 28, fontWeight: '800', color: GOLD, letterSpacing: 1 },
-  date: { fontSize: 12, color: TEXT_DIM, marginTop: 3, letterSpacing: 0.3 },
-  headerRight: { alignItems: 'flex-end', gap: 4 },
-  counter: { fontSize: 18, fontWeight: '700', color: GOLD },
-  showAllBtn: { fontSize: 11, fontWeight: '700', color: TEXT_MUTED, letterSpacing: 0.5 },
-  sectionHeader: { paddingHorizontal: 4, paddingTop: 8, paddingBottom: 4 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: 1.5 },
-  divider: { height: 1, backgroundColor: BORDER, marginHorizontal: 20, marginTop: 4 },
-  list: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 100 },
+  headerLeft: { flex: 1 },
+  title: { fontSize: 22, fontWeight: '900', color: GOLD, letterSpacing: 3 },
+  date: { fontSize: 11, color: TEXT_DIM, marginTop: 2, letterSpacing: 0.3 },
+  headerRight: { alignItems: 'flex-end', gap: 6 },
+  progressPill: { flexDirection: 'row', alignItems: 'baseline' },
+  progressDone: { fontSize: 20, fontWeight: '900', color: GOLD },
+  progressSep: { fontSize: 14, color: TEXT_DIM, fontWeight: '600' },
+  progressTotal: { fontSize: 14, color: TEXT_DIM, fontWeight: '700' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  showAllBtn: { fontSize: 10, fontWeight: '800', color: TEXT_DIM, letterSpacing: 1.5 },
+  calIcon: { fontSize: 20 },
+  headerRule: { height: 1, backgroundColor: BORDER, marginHorizontal: 20, marginBottom: 12 },
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 4, paddingVertical: 8,
+  },
+  sectionLine: { flex: 1, height: 1, backgroundColor: SEPARATOR },
+  sectionTitle: {
+    fontSize: 10, fontWeight: '800', color: TEXT_DIM,
+    textTransform: 'uppercase', letterSpacing: 2,
+  },
+  list: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 100 },
   emptyWrap: { alignItems: 'center', marginTop: 60 },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyText: { textAlign: 'center', color: TEXT_DIM, fontSize: 15, lineHeight: 24 },
   fab: {
-    position: 'absolute',
-    bottom: 28,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: SURFACE,
-    borderWidth: 2,
-    borderColor: GOLD,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: GOLD,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
+    position: 'absolute', bottom: 28, right: 24,
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: SURFACE, borderWidth: 1.5, borderColor: GOLD,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: GOLD, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
   fabPressed: { opacity: 0.7, transform: [{ scale: 0.95 }] },
-  fabIcon: { color: GOLD, fontSize: 30, fontWeight: '300', lineHeight: 34 },
+  fabIcon: { color: GOLD, fontSize: 28, fontWeight: '300', lineHeight: 32 },
 });
 
 const cb = StyleSheet.create({
   card: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: SURFACE,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: BORDER,
-    padding: 12,
-    gap: 8,
+    marginHorizontal: 16, marginBottom: 12,
+    backgroundColor: SURFACE, borderRadius: 14,
+    borderWidth: 1, borderColor: BORDER,
+    padding: 14, gap: 10,
   },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  classIcon: { fontSize: 24 },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconCircle: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  classIcon: { fontSize: 22 },
   nameBlock: { flex: 1 },
-  charName: { fontSize: 16, fontWeight: '800', color: TEXT },
-  classLabel: { fontSize: 11, color: TEXT_DIM, fontWeight: '600', marginTop: 1 },
+  charName: { fontSize: 16, fontWeight: '800', color: TEXT, letterSpacing: 0.2 },
+  classLabel: { fontSize: 9, fontWeight: '800', color: TEXT_DIM, letterSpacing: 2, marginTop: 2 },
   rankBadge: {
-    backgroundColor: BG,
-    borderWidth: 1,
-    borderColor: GOLD,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    alignItems: 'center',
-    minWidth: 52,
+    backgroundColor: BG, borderWidth: 1.5, borderColor: GOLD,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6,
+    alignItems: 'center', minWidth: 56,
   },
-  rankNum: { fontSize: 18, fontWeight: '900', color: GOLD, lineHeight: 20 },
-  rankLabel: { fontSize: 8, fontWeight: '800', color: TEXT_DIM, letterSpacing: 1.5 },
-  xpRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  rankNum: { fontSize: 20, fontWeight: '900', color: GOLD, lineHeight: 22 },
+  rankSub: { fontSize: 7, fontWeight: '800', color: TEXT_DIM, letterSpacing: 2 },
+  xpRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   xpTrack: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: SURFACE2,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: BORDER,
+    flex: 1, height: 5, borderRadius: 3,
+    backgroundColor: SURFACE2, overflow: 'hidden',
+    borderWidth: 1, borderColor: BORDER,
   },
   xpFill: { height: '100%', backgroundColor: GOLD, borderRadius: 3 },
-  xpLabel: { fontSize: 10, color: TEXT_DIM, fontWeight: '600', minWidth: 68, textAlign: 'right' },
-  abilGridRow: { flexDirection: 'row', gap: 6 },
+  xpLabel: { fontSize: 10, color: TEXT_DIM, fontWeight: '600', minWidth: 90, textAlign: 'right' },
+  abilRow: { flexDirection: 'row', gap: 5 },
   abilBox: {
-    flex: 1,
-    backgroundColor: SURFACE2,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingVertical: 7,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    gap: 2,
+    flex: 1, backgroundColor: SURFACE2, borderRadius: 8, borderWidth: 1,
+    paddingVertical: 8, paddingHorizontal: 4, alignItems: 'center', gap: 2,
   },
-  abilAbbr: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
-  abilLevel: { fontSize: 11, fontWeight: '700' },
+  abilAbbr: { fontSize: 8, fontWeight: '800', letterSpacing: 0.8 },
+  abilLevel: { fontSize: 14, fontWeight: '900', lineHeight: 16 },
   abilBar: {
-    width: '100%',
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: BG,
-    overflow: 'hidden',
-    marginTop: 1,
+    width: '100%', height: 2, borderRadius: 1,
+    backgroundColor: BG, overflow: 'hidden', marginTop: 2,
   },
-  abilBarFill: { height: '100%', borderRadius: 2 },
+  abilFill: { height: '100%', borderRadius: 1 },
 });
