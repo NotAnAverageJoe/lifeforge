@@ -1,4 +1,4 @@
-# LifeForge — Antigravity
+# LifeForge
 
 A D&D-inspired habit tracker built with Expo and React Native. Turn your daily habits into character-building quests, earn XP, level up your abilities, and forge the hero you want to become.
 
