@@ -1,6 +1,8 @@
 import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Felipa_400Regular, useFonts } from '@expo-google-fonts/felipa';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,6 +10,7 @@ import LevelUpModal from './src/components/LevelUpModal';
 import { scheduleDailyNudge } from './src/notifications';
 import AbilityDetailScreen from './src/screens/AbilityDetailScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
+import CampaignPlayScreen from './src/screens/CampaignPlayScreen';
 import CampaignsScreen from './src/screens/CampaignsScreen';
 import HabitFormScreen from './src/screens/HabitFormScreen';
 import OnboardingFlow from './src/screens/OnboardingFlow';
@@ -25,11 +28,10 @@ const NAV_THEME = {
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
-  const { Text, View } = require('react-native');
+function TabIcon({ name, color }: { name: React.ComponentProps<typeof MaterialCommunityIcons>['name']; color: string }) {
   return (
     <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: focused ? 24 : 21, opacity: focused ? 1 : 0.4 }}>{emoji}</Text>
+      <MaterialCommunityIcons name={name} size={26} color={color} />
     </View>
   );
 }
@@ -58,18 +60,18 @@ function MainTabs() {
         component={TodayScreen}
         options={{
           tabBarLabel: 'Side Quests',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="⚔️" focused={focused} />,
+          tabBarIcon: ({ color }) => <TabIcon name="sword-cross" color={color} />,
         }}
       />
       <Tab.Screen
         name="Campaigns"
         component={CampaignsScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🗺️" focused={focused} /> }}
+        options={{ tabBarIcon: ({ color }) => <TabIcon name="map" color={color} /> }}
       />
       <Tab.Screen
         name="Hero"
         component={ProfileScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🛡️" focused={focused} /> }}
+        options={{ tabBarIcon: ({ color }) => <TabIcon name="shield-star" color={color} /> }}
       />
     </Tab.Navigator>
   );
@@ -77,12 +79,13 @@ function MainTabs() {
 
 function AppShell() {
   const { state, dismissLevelUp } = useAppStore();
+  const [fontsLoaded] = useFonts({ Felipa_400Regular });
 
   useEffect(() => {
     scheduleDailyNudge().catch(() => {});
   }, []);
 
-  if (!state.isLoaded) {
+  if (!state.isLoaded || !fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: BG }} />;
   }
 
@@ -114,6 +117,11 @@ function AppShell() {
           <Stack.Screen
             name="Calendar"
             component={CalendarScreen}
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="CampaignPlay"
+            component={CampaignPlayScreen}
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
         </Stack.Navigator>

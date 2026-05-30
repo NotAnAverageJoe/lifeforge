@@ -1,3 +1,4 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useRef } from 'react';
 import {
   Alert,
@@ -121,8 +122,9 @@ export default function HabitRow({ habit, onPress, onEdit, onDelete, scheduleLab
           {/* Right badges */}
           <View style={s.rightBadges}>
             {streak > 1 && (
-              <View style={[s.streakBadge, { backgroundColor: accentColor + '18' }]}>
-                <Text style={[s.streakText, { color: accentColor }]}>🔥 {streak}</Text>
+              <View style={[s.streakBadge, s.streakBadgeRow, { backgroundColor: accentColor + '18' }]}>
+                <MaterialCommunityIcons name="fire" size={12} color={accentColor} />
+                <Text style={[s.streakText, { color: accentColor }]}>{streak}</Text>
               </View>
             )}
             {habit.linkedAbility && (() => {
@@ -173,6 +175,7 @@ const s = StyleSheet.create({
   sub: { fontSize: 10, color: TEXT_DIM, marginTop: 3, letterSpacing: 0.8, fontWeight: '600' },
   rightBadges: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   streakBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  streakBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   streakText: { fontSize: 12, fontWeight: '700' },
   abilBadge: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 1 },
   abilText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },

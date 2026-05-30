@@ -1,3 +1,4 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -20,9 +21,10 @@ import {
   todayKey,
   totalCompletionsOnDate,
 } from '../dates';
+import { cancelHabitReminders } from '../notifications';
 import { useAppStore } from '../store';
 import {
-  BG, BORDER, DONE_BG, DONE_FG, GOLD, SURFACE, SURFACE2, TEXT, TEXT_DIM, TEXT_MUTED,
+  BG, BORDER, CRIMSON_LIGHT, DONE_BG, DONE_FG, GOLD, SURFACE, SURFACE2, TEXT, TEXT_DIM, TEXT_MUTED,
 } from '../theme';
 import type { Habit, RootStackParamList } from '../types';
 
@@ -197,7 +199,10 @@ export default function CalendarScreen() {
                     'This side quest will be lost forever.',
                     [
                       { text: 'Cancel', style: 'cancel' },
-                      { text: 'Delete', style: 'destructive', onPress: () => deleteHabit(habit.id) },
+                      { text: 'Delete', style: 'destructive', onPress: () => {
+                        if (habit.notificationIds.length) cancelHabitReminders(habit.notificationIds);
+                        deleteHabit(habit.id);
+                      }},
                     ]
                   )
                 }
@@ -266,14 +271,14 @@ function DayHabitRow({
         style={({ pressed }) => [dh.iconBtn, pressed && { opacity: 0.5 }]}
         hitSlop={8}
       >
-        <Text style={dh.iconText}>✏️</Text>
+        <MaterialCommunityIcons name="pencil" size={18} color={GOLD} />
       </Pressable>
       <Pressable
         onPress={onDelete}
         style={({ pressed }) => [dh.iconBtn, pressed && { opacity: 0.5 }]}
         hitSlop={8}
       >
-        <Text style={dh.iconText}>🗑️</Text>
+        <MaterialCommunityIcons name="trash-can-outline" size={18} color={CRIMSON_LIGHT} />
       </Pressable>
     </View>
   );

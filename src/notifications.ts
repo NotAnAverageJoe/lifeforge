@@ -39,12 +39,15 @@ export async function scheduleHabitReminder(habit: Habit): Promise<string[]> {
   const minute = parseInt(minuteStr, 10);
   if (isNaN(hour) || isNaN(minute)) return [];
 
+  const leadMinutes = habit.reminderLeadMinutes ?? 5;
+  const body = `Starting in ${leadMinutes} minute${leadMinutes === 1 ? '' : 's'}!`;
+
   if (habit.frequency === 'weekly') {
     const days = habit.scheduledDays?.length ? habit.scheduledDays : [2];
     const ids = await Promise.all(
       days.map(weekday =>
         Notifications.scheduleNotificationAsync({
-          content: { title: habit.name, body: 'Starting in 5 minutes!' },
+          content: { title: habit.name, body },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
             weekday,
@@ -58,7 +61,7 @@ export async function scheduleHabitReminder(habit: Habit): Promise<string[]> {
   }
 
   const id = await Notifications.scheduleNotificationAsync({
-    content: { title: habit.name, body: 'Starting in 5 minutes!' },
+    content: { title: habit.name, body },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour,
@@ -97,6 +100,12 @@ export async function notifyChapterAvailable(campaignTitle: string, chapterName:
 export async function cancelHabitReminders(notificationIds: string[]): Promise<void> {
   if (IS_EXPO_GO) return;
   await Promise.all(notificationIds.map(id => Notifications.cancelScheduledNotificationAsync(id)));
+}
+
+export async function cancelAllNotifications(): Promise<void> {
+  if (IS_EXPO_GO) return;
+  await Notifications.cancelAllScheduledNotificationsAsync();
+  await AsyncStorage.removeItem(DAILY_NUDGE_KEY);
 }
 
 const DAILY_NUDGE_KEY = 'daily_nudge_id';

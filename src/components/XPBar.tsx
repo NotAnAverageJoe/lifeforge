@@ -1,3 +1,4 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { BORDER, GOLD, SURFACE2, TEXT, TEXT_DIM } from '../theme';
@@ -30,7 +31,10 @@ export default function XPBar({ totalXp, compact = false }: Props) {
   return (
     <View style={s.wrap}>
       <View style={s.row}>
-        <Text style={s.levelText}>⚔️  Rank {level}</Text>
+        <View style={s.rankRow}>
+          <MaterialCommunityIcons name="sword" size={14} color={GOLD} />
+          <Text style={s.levelText}>  Rank {level}</Text>
+        </View>
         <Text style={s.xpText}>{currentXp} / {nextLevelXp} XP</Text>
       </View>
       <View style={s.track}>
@@ -44,7 +48,8 @@ export default function XPBar({ totalXp, compact = false }: Props) {
 
 const s = StyleSheet.create({
   wrap: { paddingHorizontal: 20, paddingVertical: 10 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  rankRow: { flexDirection: 'row', alignItems: 'center' },
   levelText: { fontSize: 14, fontWeight: '700', color: GOLD, letterSpacing: 0.5 },
   xpText: { fontSize: 12, color: TEXT_DIM },
   track: { height: 8, borderRadius: 4, backgroundColor: SURFACE2, overflow: 'hidden', borderWidth: 1, borderColor: BORDER },

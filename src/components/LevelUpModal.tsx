@@ -1,10 +1,11 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BORDER, CRIMSON, GOLD, SURFACE, SURFACE2, TEXT, TEXT_DIM } from '../theme';
 
 type Props = { level: number; onDismiss: () => void };
 
-const ICONS = ['⚔️', '🛡️', '✨', '🏆', '⚔️', '🛡️'];
+const ICONS = ['sword', 'shield', 'star-four-points', 'trophy', 'sword', 'shield'];
 
 export default function LevelUpModal({ level, onDismiss }: Props) {
   const scale = useRef(new Animated.Value(0.4)).current;
@@ -29,10 +30,9 @@ export default function LevelUpModal({ level, onDismiss }: Props) {
         <Animated.View style={[s.card, { transform: [{ scale }], opacity }]}>
           <View style={s.iconsRow}>
             {ICONS.map((icon, i) => (
-              <Animated.Text
+              <Animated.View
                 key={i}
                 style={[
-                  s.icon,
                   {
                     transform: [
                       { translateY: iconAnims[i].interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) },
@@ -42,8 +42,8 @@ export default function LevelUpModal({ level, onDismiss }: Props) {
                   },
                 ]}
               >
-                {icon}
-              </Animated.Text>
+                <MaterialCommunityIcons name={icon as any} size={22} color={GOLD} />
+              </Animated.View>
             ))}
           </View>
 

@@ -1,3 +1,4 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
 import {
   Alert,
@@ -87,10 +88,10 @@ export default function ProfileScreen() {
         {/* Stats grid */}
         <SectionLabel title="CHRONICLE" />
         <View style={s.statsGrid}>
-          <StatCell icon="📋" value={String(habits.length)} label="Active Quests" />
-          <StatCell icon="⚔️" value={`${stats.doneToday}/${habits.length}`} label="Slain Today" />
-          <StatCell icon="🔥" value={`${stats.bestStreak}d`} label="Best Streak" />
-          <StatCell icon="🏆" value={stats.totalCompletions.toLocaleString()} label="Total Victories" />
+          <StatCell icon="clipboard-list" value={String(habits.length)} label="Active Quests" />
+          <StatCell icon="sword" value={`${stats.doneToday}/${habits.length}`} label="Slain Today" />
+          <StatCell icon="fire" value={`${stats.bestStreak}d`} label="Best Streak" />
+          <StatCell icon="trophy" value={stats.totalCompletions.toLocaleString()} label="Total Victories" />
         </View>
 
         {since && <Text style={s.since}>Adventuring since {since}</Text>}
@@ -98,13 +99,13 @@ export default function ProfileScreen() {
         {/* XP lore */}
         <SectionLabel title="THE WAY OF THE REALM" />
         <View style={s.loreCard}>
-          <LoreLine emoji="⚔️" text={`Daily quest complete  →  +${XP_DAILY} XP`} />
+          <LoreLine icon="sword" text={`Daily quest complete  →  +${XP_DAILY} XP`} />
           <View style={s.loreDivider} />
-          <LoreLine emoji="📜" text={`Weekly quest complete  →  +${XP_WEEKLY} XP`} />
+          <LoreLine icon="format-list-text" text={`Weekly quest complete  →  +${XP_WEEKLY} XP`} />
           <View style={s.loreDivider} />
-          <LoreLine emoji="🔁" text={`Each rep (multiple quest)  →  +${XP_PER_REP} XP`} />
+          <LoreLine icon="repeat-variant" text={`Each rep (multiple quest)  →  +${XP_PER_REP} XP`} />
           <View style={s.loreDivider} />
-          <LoreLine emoji="📈" text="Each rank demands greater deeds" />
+          <LoreLine icon="trending-up" text="Each rank demands greater deeds" />
         </View>
 
         {/* Dev tools */}
@@ -157,17 +158,17 @@ function SectionLabel({ title, muted }: { title: string; muted?: boolean }) {
 function StatCell({ icon, value, label }: { icon: string; value: string; label: string }) {
   return (
     <View style={sc.cell}>
-      <Text style={sc.icon}>{icon}</Text>
+      <MaterialCommunityIcons name={icon as any} size={22} color={TEXT_DIM} />
       <Text style={sc.value}>{value}</Text>
       <Text style={sc.label}>{label}</Text>
     </View>
   );
 }
 
-function LoreLine({ emoji, text }: { emoji: string; text: string }) {
+function LoreLine({ icon, text }: { icon: string; text: string }) {
   return (
     <View style={ll.row}>
-      <Text style={ll.emoji}>{emoji}</Text>
+      <MaterialCommunityIcons name={icon as any} size={16} color={TEXT_DIM} style={{ width: 22, textAlign: 'center' }} />
       <Text style={ll.text}>{text}</Text>
     </View>
   );

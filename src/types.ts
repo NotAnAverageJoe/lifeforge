@@ -9,6 +9,7 @@ export type Habit = {
   scheduledDays?: number[]; // weekly only: 1=Sun 2=Mon 3=Tue 4=Wed 5=Thu 6=Fri 7=Sat
   scheduledTime?: string | null; // 'HH:MM' — when the habit takes place (display only)
   reminder: string | null; // 'HH:MM'
+  reminderLeadMinutes?: number; // minutes before scheduledTime to notify (default 5)
   notificationIds: string[];
   completions: Record<string, number>; // 'YYYY-MM-DD' -> count
   createdAt: string;
@@ -37,11 +38,28 @@ export type Character = {
   abilityXp?: Partial<Record<keyof AbilityScores, number>>;
 };
 
+export type ChoiceLogEntry = {
+  choiceTitle: string;
+  optionLabel: string;
+  abilityAbbr?: string;
+  checkPassed?: boolean;
+  outcomeTitle: string;
+};
+
+export type CampaignCompletion = {
+  campaignId: string;
+  completedAt: string; // ISO date string
+  successfulChecks: number;
+  xpEarned: number;
+  choiceLog: ChoiceLogEntry[];
+};
+
 export type AppState = {
   habits: Habit[];
   totalXp: number;
   pendingLevelUp: number | null;
   character: Character | null;
+  campaignCompletions: CampaignCompletion[];
   isLoaded: boolean;
 };
 
@@ -50,6 +68,7 @@ export type RootStackParamList = {
   HabitForm: { habitId?: string };
   AbilityDetail: { ability: keyof AbilityScores };
   Calendar: undefined;
+  CampaignPlay: { campaignId: string };
 };
 
 export type CampaignStatus = 'coming_soon' | 'available' | 'in_progress' | 'completed';

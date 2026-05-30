@@ -19,12 +19,12 @@ export type ClassDef = {
 };
 
 export const ABILITY_META: Record<AbilityKey, { label: string; abbr: string; color: string; icon: string }> = {
-  strength:     { label: 'Strength',     abbr: 'STR', color: '#E05A5A', icon: '💪' },
-  dexterity:    { label: 'Dexterity',    abbr: 'DEX', color: '#4DD890', icon: '🌀' },
-  constitution: { label: 'Constitution', abbr: 'CON', color: '#E8904A', icon: '🛡️' },
-  intelligence: { label: 'Intelligence', abbr: 'INT', color: '#5B9CF6', icon: '📚' },
-  wisdom:       { label: 'Wisdom',       abbr: 'WIS', color: '#A374D8', icon: '🔮' },
-  charisma:     { label: 'Charisma',     abbr: 'CHA', color: '#E86FA0', icon: '✨' },
+  strength:     { label: 'Strength',     abbr: 'STR', color: '#E05A5A', icon: 'arm-flex' },
+  dexterity:    { label: 'Dexterity',    abbr: 'DEX', color: '#4DD890', icon: 'run-fast' },
+  constitution: { label: 'Constitution', abbr: 'CON', color: '#E8904A', icon: 'heart-pulse' },
+  intelligence: { label: 'Intelligence', abbr: 'INT', color: '#5B9CF6', icon: 'book-open-page-variant' },
+  wisdom:       { label: 'Wisdom',       abbr: 'WIS', color: '#A374D8', icon: 'eye' },
+  charisma:     { label: 'Charisma',     abbr: 'CHA', color: '#E86FA0', icon: 'drama-masks' },
 };
 
 export const ABILITY_DETAILS: Record<AbilityKey, { description: string; examples: string[] }> = {
@@ -102,7 +102,7 @@ export const CLASSES: ClassDef[] = [
   {
     id: 'warrior',
     name: 'Warrior',
-    icon: '⚔️',
+    icon: 'sword-cross',
     tagline: 'Unyielding. Relentless. Forged in iron.',
     description: 'You meet every challenge head-on with raw strength and endurance.',
     primaryAbilities: ['strength', 'constitution'],
@@ -110,7 +110,7 @@ export const CLASSES: ClassDef[] = [
   {
     id: 'rogue',
     name: 'Rogue',
-    icon: '🗡️',
+    icon: 'knife',
     tagline: 'Swift. Sharp. Always one step ahead.',
     description: 'Precision, agility, and cunning over brute force — always.',
     primaryAbilities: ['dexterity', 'intelligence'],
@@ -118,7 +118,7 @@ export const CLASSES: ClassDef[] = [
   {
     id: 'mage',
     name: 'Mage',
-    icon: '🔮',
+    icon: 'lightning-bolt',
     tagline: 'Knowledge is the greatest power.',
     description: 'A tireless scholar of all things arcane. Wisdom tempers your intellect.',
     primaryAbilities: ['intelligence', 'wisdom'],
@@ -126,7 +126,7 @@ export const CLASSES: ClassDef[] = [
   {
     id: 'cleric',
     name: 'Cleric',
-    icon: '✨',
+    icon: 'hands-pray',
     tagline: 'Healer of body. Guardian of spirit.',
     description: 'Guided by wisdom and sustained by iron will, you restore and uplift.',
     primaryAbilities: ['wisdom', 'constitution'],
@@ -134,7 +134,7 @@ export const CLASSES: ClassDef[] = [
   {
     id: 'ranger',
     name: 'Ranger',
-    icon: '🏹',
+    icon: 'bow-arrow',
     tagline: 'Fleet of foot. True of eye.',
     description: 'A master of survival who blends physical power with uncanny agility.',
     primaryAbilities: ['dexterity', 'strength'],
@@ -142,7 +142,7 @@ export const CLASSES: ClassDef[] = [
   {
     id: 'bard',
     name: 'Bard',
-    icon: '🎭',
+    icon: 'music-note',
     tagline: 'Every room lights up when you walk in.',
     description: 'Your greatest power is your magnetism. Charm opens every door.',
     primaryAbilities: ['charisma', 'intelligence'],

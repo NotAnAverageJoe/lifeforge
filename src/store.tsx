@@ -7,7 +7,8 @@ import React, {
   useReducer,
 } from 'react';
 import { todayKey } from './dates';
-import type { AppState, Character, Habit } from './types';
+import { cancelAllNotifications, cancelHabitReminders } from './notifications';
+import type { AppState, CampaignCompletion, Character, Habit } from './types';
 import {
   getLevelInfo,
   XP_ABILITY_DAILY,
@@ -26,11 +27,12 @@ const INITIAL_STATE: AppState = {
   totalXp: 0,
   pendingLevelUp: null,
   character: null,
+  campaignCompletions: [],
   isLoaded: false,
 };
 
 type Action =
-  | { type: 'LOAD'; payload: { habits: Habit[]; totalXp: number; character: Character | null } }
+  | { type: 'LOAD'; payload: { habits: Habit[]; totalXp: number; character: Character | null; campaignCompletions: CampaignCompletion[] } }
   | { type: 'ADD_HABIT'; payload: Habit }
   | { type: 'UPDATE_HABIT'; payload: Habit }
   | { type: 'DELETE_HABIT'; payload: string }
@@ -40,12 +42,26 @@ type Action =
   | { type: 'RESET_XP' }
   | { type: 'COMPLETE_ONBOARDING'; payload: Character }
   | { type: 'DELETE_CHARACTER' }
-  | { type: 'CLEAR_ALL' };
+  | { type: 'CLEAR_ALL' }
+  | { type: 'COMPLETE_CAMPAIGN'; payload: CampaignCompletion };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'LOAD':
       return { ...state, ...action.payload, isLoaded: true };
+
+    case 'COMPLETE_CAMPAIGN': {
+      const newTotalXp = Math.max(0, state.totalXp + action.payload.xpEarned);
+      const oldLevel = getLevelInfo(state.totalXp).level;
+      const newLevel = getLevelInfo(newTotalXp).level;
+      const pendingLevelUp = newLevel > oldLevel ? newLevel : state.pendingLevelUp;
+      return {
+        ...state,
+        totalXp: newTotalXp,
+        pendingLevelUp,
+        campaignCompletions: [...state.campaignCompletions, action.payload],
+      };
+    }
 
     case 'ADD_HABIT':
       return { ...state, habits: [...state.habits, action.payload] };
@@ -169,11 +185,12 @@ type Ctx = {
   completeOnboarding: (character: Character) => void;
   deleteCharacter: () => void;
   clearAll: () => void;
+  completeCampaign: (completion: CampaignCompletion) => void;
 };
 
 const AppContext = createContext<Ctx | null>(null);
 
-async function loadData(): Promise<{ habits: Habit[]; totalXp: number; character: Character | null }> {
+async function loadData(): Promise<{ habits: Habit[]; totalXp: number; character: Character | null; campaignCompletions: CampaignCompletion[] }> {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   if (raw) {
     const parsed = JSON.parse(raw);
@@ -184,6 +201,7 @@ async function loadData(): Promise<{ habits: Habit[]; totalXp: number; character
       })),
       totalXp: parsed.totalXp ?? 0,
       character: parsed.character ?? null,
+      campaignCompletions: parsed.campaignCompletions ?? [],
     };
   }
 
@@ -206,9 +224,10 @@ async function loadData(): Promise<{ habits: Habit[]; totalXp: number; character
       })),
       totalXp: 0,
       character: null,
+      campaignCompletions: [],
     };
   }
-  return { habits: [], totalXp: 0, character: null };
+  return { habits: [], totalXp: 0, character: null, campaignCompletions: [] };
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -222,9 +241,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!state.isLoaded) return;
     AsyncStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ habits: state.habits, totalXp: state.totalXp, character: state.character })
+      JSON.stringify({
+        habits: state.habits,
+        totalXp: state.totalXp,
+        character: state.character,
+        campaignCompletions: state.campaignCompletions,
+      })
     );
-  }, [state.habits, state.totalXp, state.character, state.isLoaded]);
+  }, [state.habits, state.totalXp, state.character, state.campaignCompletions, state.isLoaded]);
 
   const addHabit = useCallback((habit: Habit) => dispatch({ type: 'ADD_HABIT', payload: habit }), []);
   const updateHabit = useCallback((habit: Habit) => dispatch({ type: 'UPDATE_HABIT', payload: habit }), []);
@@ -242,7 +266,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     []
   );
   const deleteCharacter = useCallback(() => dispatch({ type: 'DELETE_CHARACTER' }), []);
-  const clearAll = useCallback(() => dispatch({ type: 'CLEAR_ALL' }), []);
+  const clearAll = useCallback(async () => {
+    await cancelAllNotifications();
+    dispatch({ type: 'CLEAR_ALL' });
+  }, []);
+  const completeCampaign = useCallback(
+    (completion: CampaignCompletion) => dispatch({ type: 'COMPLETE_CAMPAIGN', payload: completion }),
+    []
+  );
 
   return (
     <AppContext.Provider
@@ -250,7 +281,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         state, dispatch,
         addHabit, updateHabit, deleteHabit, toggleCompletion,
         dismissLevelUp, addXp, resetXp,
-        completeOnboarding, deleteCharacter, clearAll,
+        completeOnboarding, deleteCharacter, clearAll, completeCampaign,
       }}
     >
       {children}

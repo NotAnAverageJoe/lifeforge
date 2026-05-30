@@ -1,6 +1,7 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
@@ -55,7 +56,7 @@ export default function AbilityDetailScreen() {
       <ScrollView contentContainerStyle={s.scroll}>
         {/* Hero block */}
         <View style={[s.hero, { borderColor: meta.color + '60' }]}>
-          <Text style={s.heroIcon}>{meta.icon}</Text>
+          <MaterialCommunityIcons name={meta.icon as any} size={52} color={meta.color} style={{ marginBottom: 4 }} />
           <Text style={[s.heroName, { color: meta.color }]}>{meta.label}</Text>
           <View style={[s.levelBadge, { borderColor: meta.color }]}>
             <Text style={[s.levelNum, { color: meta.color }]}>{level}</Text>

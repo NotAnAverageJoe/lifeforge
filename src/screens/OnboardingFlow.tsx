@@ -1,4 +1,5 @@
 import * as Haptics from 'expo-haptics';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useRef, useState } from 'react';
 import {
@@ -149,7 +150,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={w.scroll} showsVerticalScrollIndicator={false}>
         <View style={w.crest}>
-          <Text style={w.crestEmoji}>⚔️</Text>
+          <MaterialCommunityIcons name="sword-cross" size={56} color={GOLD} />
           <View style={w.crestLine} />
         </View>
 
@@ -159,13 +160,13 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
         <View style={w.divider} />
 
         <View style={w.features}>
-          {[
-            { icon: '⚔️', text: 'Forge quests from your daily habits and routines' },
-            { icon: '✨', text: 'Complete them to earn XP and ascend in rank' },
-            { icon: '🛡️', text: 'Discover your character class and grow your legend' },
-          ].map(f => (
+          {([
+            { icon: 'sword', text: 'Forge quests from your daily habits and routines' },
+            { icon: 'star-four-points', text: 'Complete them to earn XP and ascend in rank' },
+            { icon: 'shield', text: 'Discover your character class and grow your legend' },
+          ] as { icon: string; text: string }[]).map(f => (
             <View key={f.text} style={w.featureRow}>
-              <Text style={w.featureIcon}>{f.icon}</Text>
+              <MaterialCommunityIcons name={f.icon as any} size={22} color={GOLD} style={w.featureIcon} />
               <Text style={w.featureText}>{f.text}</Text>
             </View>
           ))}
@@ -696,7 +697,7 @@ function ClassStep({
                     <Text style={cs.suggestedBadgeText}>SUGGESTED</Text>
                   </View>
                 )}
-                <Text style={cs.classIcon}>{cls.icon}</Text>
+                <MaterialCommunityIcons name={cls.icon as any} size={28} color={isSelected ? GOLD : TEXT_DIM} />
                 <Text style={[cs.className, isSelected && cs.classNameSelected]}>{cls.name}</Text>
                 <Text style={cs.classTagline}>{cls.tagline}</Text>
                 <View style={cs.classAbilRow}>
@@ -717,7 +718,10 @@ function ClassStep({
           const def = CLASSES.find(c => c.id === selected)!;
           return (
             <View style={cs.descCard}>
-              <Text style={cs.descTitle}>{def.icon}  {def.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialCommunityIcons name={def.icon as any} size={18} color={GOLD} />
+                <Text style={cs.descTitle}>{def.name}</Text>
+              </View>
               <Text style={cs.descText}>{def.description}</Text>
             </View>
           );

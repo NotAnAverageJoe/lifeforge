@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -16,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import HabitRow from '../components/HabitRow';
 import { ABILITY_META, ABILITY_ORDER, CLASSES } from '../data/onboarding';
 import { isDoneToday, isScheduledForDate, todayKey } from '../dates';
+import { cancelHabitReminders } from '../notifications';
 import { useAppStore } from '../store';
 import {
   BG, BORDER, GOLD, SEPARATOR, SURFACE, SURFACE2, TEXT, TEXT_DIM, TEXT_MUTED,
@@ -47,7 +50,6 @@ export default function TodayScreen() {
   const today = todayKey();
   const todayHabits = habits.filter(h => isScheduledForDate(h, today));
   const offDayHabits = habits.filter(h => !isScheduledForDate(h, today));
-  const doneCount = todayHabits.filter(h => isDoneToday(h)).length;
 
   const listData: ListItem[] = [
     ...todayHabits.map(h => ({ type: 'habit' as const, habit: h })),
@@ -78,10 +80,12 @@ export default function TodayScreen() {
 
   const handleDelete = useCallback(
     (id: string) => {
+      const habit = habits.find(h => h.id === id);
+      if (habit?.notificationIds.length) cancelHabitReminders(habit.notificationIds);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       deleteHabit(id);
     },
-    [deleteHabit]
+    [habits, deleteHabit]
   );
 
   const dayLabel = new Date().toLocaleDateString('en-US', {
@@ -98,13 +102,6 @@ export default function TodayScreen() {
           <Text style={s.date}>{dayLabel}</Text>
         </View>
         <View style={s.headerRight}>
-          {todayHabits.length > 0 && (
-            <View style={s.progressPill}>
-              <Text style={s.progressDone}>{doneCount}</Text>
-              <Text style={s.progressSep}> / </Text>
-              <Text style={s.progressTotal}>{todayHabits.length}</Text>
-            </View>
-          )}
           <View style={s.headerActions}>
             {offDayHabits.length > 0 && (
               <Pressable onPress={() => setShowAll(v => !v)}>
@@ -112,7 +109,7 @@ export default function TodayScreen() {
               </Pressable>
             )}
             <Pressable onPress={() => navigation.navigate('Calendar')} hitSlop={8}>
-              <Text style={s.calIcon}>📅</Text>
+              <MaterialCommunityIcons name="calendar-month" size={22} color={GOLD} />
             </Pressable>
           </View>
         </View>
@@ -120,15 +117,19 @@ export default function TodayScreen() {
 
       <View style={s.headerRule} />
 
-      {character && <CharacterBanner character={character} totalXp={totalXp} />}
-
       <FlatList
         data={listData}
         keyExtractor={item => item.type === 'section' ? item.title : item.habit.id}
         contentContainerStyle={s.list}
+        ListHeaderComponent={
+          <>
+            {character && <CharacterBanner character={character} totalXp={totalXp} />}
+            <DailyAffirmation />
+          </>
+        }
         ListEmptyComponent={
           <View style={s.emptyWrap}>
-            <Text style={s.emptyIcon}>⚔️</Text>
+            <MaterialCommunityIcons name="sword-cross" size={48} color={TEXT_MUTED} />
             {habits.length > 0 ? (
               <Text style={s.emptyText}>All clear for today.{'\n'}Tap "ALL" to view other quests.</Text>
             ) : (
@@ -190,7 +191,7 @@ function CharacterBanner({ character, totalXp }: { character: Character; totalXp
       {/* Identity row */}
       <View style={cb.topRow}>
         <View style={cb.iconCircle}>
-          <Text style={cb.classIcon}>{classDef.icon}</Text>
+          <MaterialCommunityIcons name={classDef.icon as any} size={26} color={GOLD} />
         </View>
         <View style={cb.nameBlock}>
           <Text style={cb.charName} numberOfLines={1}>{character.name}</Text>
@@ -242,6 +243,67 @@ function CharacterBanner({ character, totalXp }: { character: Character; totalXp
   );
 }
 
+const FALLBACK_AFFIRMATIONS = [
+  'You are capable of amazing things.',
+  'Every step forward is progress, no matter how small.',
+  'Your potential is limitless.',
+  'You have the strength to overcome any challenge.',
+  'Today is a new opportunity to grow.',
+  'Believe in yourself and all that you are.',
+  'You are stronger than you think.',
+];
+
+function DailyAffirmation() {
+  const [affirmation, setAffirmation] = useState<string | null>(null);
+
+  useEffect(() => {
+    const today = todayKey();
+    const key = `daily_affirmation_${today}`;
+    AsyncStorage.getItem(key)
+      .then(cached => {
+        if (cached) { setAffirmation(cached); return; }
+        fetch('https://www.affirmations.dev/')
+          .then(r => r.json())
+          .then((data: { affirmation: string }) => {
+            setAffirmation(data.affirmation);
+            AsyncStorage.setItem(key, data.affirmation).catch(() => {});
+          })
+          .catch(() => {
+            const fb = FALLBACK_AFFIRMATIONS[Math.floor(Math.random() * FALLBACK_AFFIRMATIONS.length)];
+            setAffirmation(fb);
+          });
+      })
+      .catch(() => {});
+  }, []);
+
+  if (!affirmation) return null;
+
+  return (
+    <View style={af.container}>
+      <View style={af.row}>
+        <View style={af.line} />
+        <Text style={af.text} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+          "{affirmation}"
+        </Text>
+        <View style={af.line} />
+      </View>
+    </View>
+  );
+}
+
+const af = StyleSheet.create({
+  container: { paddingVertical: 4, marginBottom: 10 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: TEXT_MUTED, minWidth: 16, opacity: 0.5 },
+  text: {
+    flexShrink: 1,
+    fontFamily: 'Felipa_400Regular',
+    fontSize: 20,
+    color: TEXT_MUTED,
+    textAlign: 'center',
+  },
+});
+
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
   header: {
@@ -252,10 +314,6 @@ const s = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '900', color: GOLD, letterSpacing: 3 },
   date: { fontSize: 11, color: TEXT_DIM, marginTop: 2, letterSpacing: 0.3 },
   headerRight: { alignItems: 'flex-end', gap: 6 },
-  progressPill: { flexDirection: 'row', alignItems: 'baseline' },
-  progressDone: { fontSize: 20, fontWeight: '900', color: GOLD },
-  progressSep: { fontSize: 14, color: TEXT_DIM, fontWeight: '600' },
-  progressTotal: { fontSize: 14, color: TEXT_DIM, fontWeight: '700' },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   showAllBtn: { fontSize: 10, fontWeight: '800', color: TEXT_DIM, letterSpacing: 1.5 },
   calIcon: { fontSize: 20 },
@@ -287,7 +345,7 @@ const s = StyleSheet.create({
 
 const cb = StyleSheet.create({
   card: {
-    marginHorizontal: 16, marginBottom: 12,
+    marginBottom: 12,
     backgroundColor: SURFACE, borderRadius: 14,
     borderWidth: 1, borderColor: BORDER,
     padding: 14, gap: 10,
