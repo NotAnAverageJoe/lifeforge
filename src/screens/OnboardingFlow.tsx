@@ -5,6 +5,7 @@ import React, { useRef, useState } from 'react';
 import {
   Animated,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -24,6 +25,7 @@ import {
   suggestClass,
   type AbilityKey,
 } from '../data/onboarding';
+import ClassIcon from '../components/ClassIcon';
 import { useAppStore } from '../store';
 import { totalXpForAbilityLevel } from '../xp';
 import {
@@ -142,7 +144,34 @@ export default function OnboardingFlow() {
   }
 }
 
-// ─── Step 1: Welcome ──────────────────────────────────────────────────────────
+// ─── Step 1: Welcome / How It Works ──────────────────────────────────────────
+
+const HOW_IT_WORKS = [
+  {
+    icon: 'sword-cross',
+    color: '#C9A84C',
+    title: 'Side Quests',
+    desc: 'Turn daily and weekly habits into quests. Complete them to earn XP, build streaks, and track your history on the Calendar.',
+  },
+  {
+    icon: 'shield-star',
+    color: '#5B9CF6',
+    title: 'Abilities & Class',
+    desc: 'Six ability scores — Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma — define how you grow. Your class grants +2 to its two key abilities, boosting your edge in everything you do.',
+  },
+  {
+    icon: 'map',
+    color: '#A374D8',
+    title: 'Campaigns',
+    desc: 'Story-driven adventures with branching choices and ability checks. Your ability levels directly affect your odds of success on each check.',
+  },
+  {
+    icon: 'chevron-triple-up',
+    color: '#4DD890',
+    title: 'Rank Up',
+    desc: 'Every completed quest earns XP. Climb from Rank 1 to Rank 20 — early ranks come quickly, but reaching the top takes years of real-world dedication.',
+  },
+] as const;
 
 function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
@@ -150,39 +179,34 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={w.scroll} showsVerticalScrollIndicator={false}>
         <View style={w.crest}>
-          <MaterialCommunityIcons name="sword-cross" size={56} color={GOLD} />
+          <MaterialCommunityIcons name="sword-cross" size={44} color={GOLD} />
           <View style={w.crestLine} />
         </View>
 
         <Text style={w.title}>LIFEFORGE</Text>
-        <Text style={w.subtitle}>Where daily habits become{'\n'}the stuff of legend.</Text>
+        <Text style={w.subtitle}>HOW IT WORKS</Text>
 
-        <View style={w.divider} />
-
-        <View style={w.features}>
-          {([
-            { icon: 'sword', text: 'Forge quests from your daily habits and routines' },
-            { icon: 'star-four-points', text: 'Complete them to earn XP and ascend in rank' },
-            { icon: 'shield', text: 'Discover your character class and grow your legend' },
-          ] as { icon: string; text: string }[]).map(f => (
-            <View key={f.text} style={w.featureRow}>
-              <MaterialCommunityIcons name={f.icon as any} size={22} color={GOLD} style={w.featureIcon} />
-              <Text style={w.featureText}>{f.text}</Text>
+        <View style={w.cards}>
+          {HOW_IT_WORKS.map(item => (
+            <View key={item.title} style={[w.card, { borderLeftColor: item.color }]}>
+              <View style={[w.cardIconWrap, { backgroundColor: item.color + '1A' }]}>
+                <MaterialCommunityIcons name={item.icon as any} size={20} color={item.color} />
+              </View>
+              <View style={w.cardBody}>
+                <Text style={[w.cardTitle, { color: item.color }]}>{item.title}</Text>
+                <Text style={w.cardDesc}>{item.desc}</Text>
+              </View>
             </View>
           ))}
         </View>
 
-        <View style={w.divider} />
-
-        <Text style={w.lore}>
-          Every hero begins their journey somewhere.{'\n'}Yours starts here.
-        </Text>
+        <Text style={w.lore}>Your legend begins now.</Text>
 
         <Pressable
           style={({ pressed }) => [w.cta, pressed && w.ctaPressed]}
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onNext(); }}
         >
-          <Text style={w.ctaText}>Embark on Your Journey  ›</Text>
+          <Text style={w.ctaText}>Begin Character Creation  ›</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -191,23 +215,33 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 
 const w = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
-  scroll: { padding: 28, paddingBottom: 48, alignItems: 'center' },
-  crest: { alignItems: 'center', marginTop: 20, marginBottom: 24 },
-  crestEmoji: { fontSize: 56 },
-  crestLine: { marginTop: 8, width: 56, height: 2, backgroundColor: GOLD, opacity: 0.5 },
+  scroll: { padding: 24, paddingBottom: 48, alignItems: 'center' },
+  crest: { alignItems: 'center', marginTop: 16, marginBottom: 16 },
+  crestLine: { marginTop: 8, width: 44, height: 2, backgroundColor: GOLD, opacity: 0.5 },
   title: {
-    fontSize: 36, fontWeight: '900', color: GOLD,
-    letterSpacing: 6, textAlign: 'center', marginBottom: 12,
+    fontSize: 32, fontWeight: '900', color: GOLD,
+    letterSpacing: 6, textAlign: 'center', marginBottom: 6,
   },
-  subtitle: { fontSize: 16, color: TEXT_DIM, textAlign: 'center', lineHeight: 24, marginBottom: 8 },
-  divider: { width: '60%', height: 1, backgroundColor: BORDER, marginVertical: 24 },
-  features: { width: '100%', gap: 16 },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  featureIcon: { fontSize: 22, width: 30, textAlign: 'center' },
-  featureText: { flex: 1, fontSize: 15, color: TEXT_DIM, lineHeight: 22 },
+  subtitle: {
+    fontSize: 11, fontWeight: '800', color: TEXT_DIM,
+    letterSpacing: 4, textAlign: 'center', marginBottom: 24,
+  },
+  cards: { width: '100%', gap: 10, marginBottom: 28 },
+  card: {
+    backgroundColor: SURFACE, borderRadius: 14, borderWidth: 1,
+    borderColor: BORDER, borderLeftWidth: 3,
+    flexDirection: 'row', padding: 14, gap: 12, alignItems: 'flex-start',
+  },
+  cardIconWrap: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  cardBody: { flex: 1 },
+  cardTitle: { fontSize: 13, fontWeight: '800', letterSpacing: 0.3, marginBottom: 4 },
+  cardDesc: { fontSize: 13, color: TEXT_DIM, lineHeight: 19 },
   lore: {
-    fontSize: 14, color: TEXT_MUTED, textAlign: 'center',
-    lineHeight: 22, fontStyle: 'italic', marginBottom: 32,
+    fontSize: 13, color: TEXT_MUTED, textAlign: 'center',
+    fontStyle: 'italic', marginBottom: 24,
   },
   cta: {
     width: '100%', paddingVertical: 16, borderRadius: 14,
@@ -261,23 +295,30 @@ function IdentityStep({
             <Text style={id.dateBtnAge}>Age {age}</Text>
           </Pressable>
 
-          {showPicker && (
-            Platform.OS === 'ios' ? (
-              <>
-                <DateTimePicker
-                  value={birthday}
-                  mode="date"
-                  display="spinner"
-                  maximumDate={new Date()}
-                  minimumDate={new Date('1920-01-01')}
-                  onChange={(_, date) => { if (date) setBirthday(date); }}
-                  style={{ marginBottom: 8 }}
-                />
-                <Pressable style={id.doneBtn} onPress={() => setShowPicker(false)}>
-                  <Text style={id.doneBtnText}>Done</Text>
+          {Platform.OS === 'ios' ? (
+            <Modal visible={showPicker} transparent animationType="slide">
+              <Pressable style={id.pickerOverlay} onPress={() => setShowPicker(false)}>
+                <Pressable style={id.pickerSheet} onPress={e => e.stopPropagation()}>
+                  <View style={id.pickerHeader}>
+                    <Text style={id.pickerTitle}>Select Birthday</Text>
+                    <Pressable style={id.doneBtn} onPress={() => setShowPicker(false)}>
+                      <Text style={id.doneBtnText}>Done</Text>
+                    </Pressable>
+                  </View>
+                  <DateTimePicker
+                    value={birthday}
+                    mode="date"
+                    display="spinner"
+                    maximumDate={new Date()}
+                    minimumDate={new Date('1920-01-01')}
+                    onChange={(_, date) => { if (date) setBirthday(date); }}
+                    style={id.picker}
+                  />
                 </Pressable>
-              </>
-            ) : (
+              </Pressable>
+            </Modal>
+          ) : (
+            showPicker && (
               <DateTimePicker
                 value={birthday}
                 mode="date"
@@ -338,9 +379,23 @@ const id = StyleSheet.create({
   },
   dateBtnMain: { fontSize: 15, color: TEXT },
   dateBtnAge: { fontSize: 13, color: GOLD, fontWeight: '700' },
+  pickerOverlay: {
+    flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  pickerSheet: {
+    backgroundColor: SURFACE, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    borderWidth: 1, borderColor: BORDER, paddingBottom: 32,
+  },
+  pickerHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
+    borderBottomWidth: 1, borderBottomColor: BORDER,
+  },
+  pickerTitle: { fontSize: 15, fontWeight: '700', color: TEXT },
+  picker: { backgroundColor: SURFACE },
   doneBtn: {
-    backgroundColor: GOLD, borderRadius: 10, padding: 12,
-    alignItems: 'center', marginBottom: 16,
+    backgroundColor: GOLD, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16,
+    alignItems: 'center',
   },
   doneBtnText: { fontWeight: '700', color: BG },
   genderGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
@@ -697,7 +752,7 @@ function ClassStep({
                     <Text style={cs.suggestedBadgeText}>SUGGESTED</Text>
                   </View>
                 )}
-                <MaterialCommunityIcons name={cls.icon as any} size={28} color={isSelected ? GOLD : TEXT_DIM} />
+                <ClassIcon classId={cls.id} color={isSelected ? GOLD : TEXT_DIM} width={28} height={28} />
                 <Text style={[cs.className, isSelected && cs.classNameSelected]}>{cls.name}</Text>
                 <Text style={cs.classTagline}>{cls.tagline}</Text>
                 <View style={cs.classAbilRow}>
@@ -719,7 +774,7 @@ function ClassStep({
           return (
             <View style={cs.descCard}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <MaterialCommunityIcons name={def.icon as any} size={18} color={GOLD} />
+                <ClassIcon classId={def.id} color={GOLD} width={18} height={18} />
                 <Text style={cs.descTitle}>{def.name}</Text>
               </View>
               <Text style={cs.descText}>{def.description}</Text>

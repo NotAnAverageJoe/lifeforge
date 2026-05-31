@@ -13,7 +13,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ABILITY_DETAILS, ABILITY_META } from '../data/onboarding';
+import { ABILITY_DETAILS, ABILITY_META, CLASSES, getClassProficiencyBonus } from '../data/onboarding';
+import AbilityIcon from '../components/AbilityIcon';
+import ClassIcon from '../components/ClassIcon';
 import { useAppStore } from '../store';
 import { BG, BORDER, GOLD, SURFACE, SURFACE2, TEXT, TEXT_DIM, TEXT_MUTED } from '../theme';
 import type { RootStackParamList } from '../types';
@@ -56,7 +58,7 @@ export default function AbilityDetailScreen() {
       <ScrollView contentContainerStyle={s.scroll}>
         {/* Hero block */}
         <View style={[s.hero, { borderColor: meta.color + '60' }]}>
-          <MaterialCommunityIcons name={meta.icon as any} size={52} color={meta.color} style={{ marginBottom: 4 }} />
+          <AbilityIcon ability={ability} width={52} height={52} style={{ marginBottom: 4 }} />
           <Text style={[s.heroName, { color: meta.color }]}>{meta.label}</Text>
           <View style={[s.levelBadge, { borderColor: meta.color }]}>
             <Text style={[s.levelNum, { color: meta.color }]}>{level}</Text>
@@ -97,6 +99,24 @@ export default function AbilityDetailScreen() {
           </View>
           <Text style={[s.statValue, { color: meta.color }]}>{baseScore} / 5</Text>
         </View>
+
+        {/* Class modifier */}
+        {(() => {
+          const bonus = getClassProficiencyBonus(character.characterClass, ability);
+          const cls = CLASSES.find(c => c.id === character.characterClass)!;
+          return (
+            <View style={s.statRow}>
+              <Text style={s.statLabel}>Class Bonus</Text>
+              <View style={s.classBadgeRow}>
+                <ClassIcon classId={cls.id} color={bonus > 0 ? GOLD : TEXT_MUTED} width={13} height={13} />
+                <Text style={[s.classBadgeName, bonus > 0 && { color: GOLD }]}>{cls.name}</Text>
+              </View>
+              <Text style={[s.statValue, { color: bonus > 0 ? GOLD : TEXT_MUTED }]}>
+                {bonus > 0 ? `+${bonus}` : '—'}
+              </Text>
+            </View>
+          );
+        })()}
 
         {/* Description */}
         <View style={s.section}>
@@ -192,6 +212,8 @@ const s = StyleSheet.create({
     marginBottom: 14,
   },
   statLabel: { fontSize: 13, color: TEXT_DIM, fontWeight: '600' },
+  classBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  classBadgeName: { fontSize: 13, fontWeight: '600', color: TEXT_MUTED },
   dotRow: { flexDirection: 'row', gap: 6 },
   dot: { width: 12, height: 12, borderRadius: 6, borderWidth: 1 },
   statValue: { fontSize: 13, fontWeight: '700', minWidth: 30, textAlign: 'right' },

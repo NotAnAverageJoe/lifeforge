@@ -1,3 +1,4 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -36,6 +37,7 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const retryAfter = useRef(0);
 
   const isSignUp = mode === 'sign_up';
@@ -140,14 +142,27 @@ export default function AuthScreen() {
               value={email}
               onChangeText={setEmail}
             />
-            <TextInput
-              style={s.input}
-              placeholder="Password"
-              placeholderTextColor={TEXT_MUTED}
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
+            <View style={s.inputWrap}>
+              <TextInput
+                style={s.inputWrapField}
+                placeholder="Password"
+                placeholderTextColor={TEXT_MUTED}
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <Pressable
+                onPress={() => setShowPassword(v => !v)}
+                style={s.eyeBtn}
+                hitSlop={8}
+              >
+                <MaterialCommunityIcons
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={20}
+                  color={TEXT_MUTED}
+                />
+              </Pressable>
+            </View>
 
             <Pressable
               style={({ pressed }) => [
@@ -203,6 +218,19 @@ const s = StyleSheet.create({
     borderRadius: 12, borderWidth: 1, borderColor: BORDER,
     paddingHorizontal: 16, paddingVertical: 14,
     fontSize: 16, color: TEXT,
+  },
+  inputWrap: {
+    backgroundColor: SURFACE2,
+    borderRadius: 12, borderWidth: 1, borderColor: BORDER,
+    flexDirection: 'row', alignItems: 'center',
+    paddingLeft: 16,
+  },
+  inputWrapField: {
+    flex: 1, paddingVertical: 14,
+    fontSize: 16, color: TEXT,
+  },
+  eyeBtn: {
+    paddingHorizontal: 14, paddingVertical: 14,
   },
   btn: {
     borderRadius: 12,

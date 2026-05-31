@@ -86,6 +86,8 @@ function AppShell() {
   const [fontsLoaded] = useFonts({ Felipa_400Regular });
   // undefined = still resolving, null = signed out, Session = signed in
   const [session, setSession] = useState<Session | null | undefined>(undefined);
+  // true while syncing on an active sign-in — prevents OnboardingFlow flash for returning users
+  const [syncing, setSyncing] = useState(false);
 
   // Always current — used in async callbacks to read post-render state
   const stateRef = useRef(state);
@@ -94,14 +96,21 @@ function AppShell() {
   useEffect(() => {
     scheduleDailyNudge().catch(() => {});
 
-    async function syncOnSignIn() {
-      const remote = await pullAll().catch(() => null);
-      if (!remote) return;
-      mergeRemote(remote);
-      // If Supabase is empty (first sign-in from this account), push existing local data up
-      if (!remote.habits.length && !remote.character) {
-        const s = stateRef.current;
-        pushAllLocal(s.habits, s.character, s.totalXp, s.campaignCompletions).catch(() => {});
+    // showLoading=true during an active sign-in so returning users see a blank screen
+    // instead of a brief flash of OnboardingFlow while the character loads from Supabase.
+    async function syncOnSignIn(showLoading = false) {
+      if (showLoading) setSyncing(true);
+      try {
+        const remote = await pullAll().catch(() => null);
+        if (!remote) return;
+        mergeRemote(remote);
+        // If Supabase is empty (first sign-in from this account), push existing local data up
+        if (!remote.habits.length && !remote.character) {
+          const s = stateRef.current;
+          pushAllLocal(s.habits, s.character, s.totalXp, s.campaignCompletions).catch(() => {});
+        }
+      } finally {
+        if (showLoading) setSyncing(false);
       }
     }
 
@@ -112,21 +121,21 @@ function AppShell() {
       if (!error && !user) { setSession(null); return; }
       supabase.auth.getSession().then(({ data: { session: s } }) => {
         setSession(s);
-        if (s) syncOnSignIn();
+        if (s) syncOnSignIn(false); // startup — local AsyncStorage data already loaded
       });
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       if (event === 'INITIAL_SESSION') return; // startup auth handled above by getUser()
       setSession(s);
-      if (event === 'SIGNED_IN') syncOnSignIn();
+      if (event === 'SIGNED_IN') syncOnSignIn(true); // active sign-in — hold loading until character arrives
       if (event === 'SIGNED_OUT') clearLocal();
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  if (!state.isLoaded || !fontsLoaded || session === undefined) {
+  if (!state.isLoaded || !fontsLoaded || session === undefined || syncing) {
     return <View style={{ flex: 1, backgroundColor: BG }} />;
   }
 

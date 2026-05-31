@@ -118,7 +118,7 @@ export const CLASSES: ClassDef[] = [
   {
     id: 'mage',
     name: 'Mage',
-    icon: 'lightning-bolt',
+    icon: 'wizard-hat',
     tagline: 'Knowledge is the greatest power.',
     description: 'A tireless scholar of all things arcane. Wisdom tempers your intellect.',
     primaryAbilities: ['intelligence', 'wisdom'],
@@ -159,6 +159,14 @@ export function computeAbilities(answers: number[]): AbilityScores {
     wisdom:       answers[4] ?? 3,
     charisma:     answers[5] ?? 3,
   };
+}
+
+export function getClassProficiencyBonus(
+  characterClass: CharacterClass,
+  ability: keyof AbilityScores,
+): number {
+  const cls = CLASSES.find(c => c.id === characterClass);
+  return cls?.primaryAbilities.includes(ability) ? 2 : 0;
 }
 
 export function suggestClass(abilities: AbilityScores): CharacterClass {

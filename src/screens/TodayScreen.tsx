@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HabitRow from '../components/HabitRow';
+import ClassIcon from '../components/ClassIcon';
 import { ABILITY_META, ABILITY_ORDER, CLASSES } from '../data/onboarding';
 import { isDoneToday, isScheduledForDate, todayKey } from '../dates';
 import { cancelHabitReminders } from '../notifications';
@@ -190,7 +191,7 @@ function CharacterBanner({ character, totalXp }: { character: Character; totalXp
       {/* Identity row */}
       <View style={cb.topRow}>
         <View style={cb.iconCircle}>
-          <MaterialCommunityIcons name={classDef.icon as any} size={26} color={GOLD} />
+          <ClassIcon classId={classDef.id} color={GOLD} width={26} height={26} />
         </View>
         <View style={cb.nameBlock}>
           <Text style={cb.charName} numberOfLines={1}>{character.name}</Text>

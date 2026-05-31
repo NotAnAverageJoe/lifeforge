@@ -7,7 +7,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CAMPAIGNS_MAP } from '../data/campaigns';
 import type { ChoiceOption } from '../data/campaigns';
-import { ABILITY_META } from '../data/onboarding';
+import { ABILITY_META, getClassProficiencyBonus } from '../data/onboarding';
 import { useAppStore } from '../store';
 import {
   BG, BORDER, GOLD, SURFACE, SURFACE2, TEXT, TEXT_DIM, TEXT_MUTED,
@@ -24,6 +24,7 @@ type CheckOverlay = {
   ability: keyof AbilityScores;
   requiredLevel: number;
   charLevel: number;
+  classBonus: number;
   passed: boolean;
   guaranteed: boolean;
   successChance: number;
@@ -56,7 +57,11 @@ export default function CampaignPlayScreen({ navigation, route }: Props) {
 
   function getCharAbilityLevel(ability: keyof AbilityScores): number {
     const xp = character.abilityXp?.[ability] ?? 0;
-    return getAbilityLevelInfo(xp).level;
+    return getAbilityLevelInfo(xp).level + getClassProficiencyBonus(character.characterClass, ability);
+  }
+
+  function getClassBonus(ability: keyof AbilityScores): number {
+    return getClassProficiencyBonus(character.characterClass, ability);
   }
 
   function handleChoice(option: ChoiceOption) {
@@ -70,6 +75,7 @@ export default function CampaignPlayScreen({ navigation, route }: Props) {
         ability: option.check.ability,
         requiredLevel: option.check.requiredLevel,
         charLevel,
+        classBonus: getClassBonus(option.check.ability),
         passed,
         guaranteed,
         successChance,
@@ -182,7 +188,12 @@ export default function CampaignPlayScreen({ navigation, route }: Props) {
                 <Text style={s.statValue}>{checkOverlay.requiredLevel}</Text>
               </View>
               <View style={[s.statRow, { borderBottomWidth: 0 }]}>
-                <Text style={s.statLabel}>Your {meta.label}</Text>
+                <View>
+                  <Text style={s.statLabel}>Your {meta.label}</Text>
+                  {checkOverlay.classBonus > 0 && (
+                    <Text style={s.statBonusNote}>incl. +{checkOverlay.classBonus} class bonus</Text>
+                  )}
+                </View>
                 <Text style={s.statValue}>{checkOverlay.charLevel}</Text>
               </View>
             </View>
@@ -274,7 +285,7 @@ export default function CampaignPlayScreen({ navigation, route }: Props) {
                     <Text style={s.checkInfoText}>
                       {meta!.label} Lv.{check.requiredLevel} required
                       {'   '}·{'   '}
-                      Your Lv: {charLevel}
+                      Your Lv: {charLevel}{getClassBonus(check.ability) > 0 ? ` (+${getClassBonus(check.ability)})` : ''}
                       {'   '}·{'   '}
                       {guaranteed ? 'Guaranteed' : `${successPct}% success`}
                     </Text>
@@ -460,6 +471,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: BORDER,
   },
   statLabel: { fontSize: 13, color: TEXT_DIM },
+  statBonusNote: { fontSize: 10, color: GOLD, marginTop: 2 },
   statValue: { fontSize: 13, fontWeight: '700', color: TEXT },
   checkResult: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

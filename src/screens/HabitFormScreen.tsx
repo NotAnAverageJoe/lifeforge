@@ -1,5 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AbilityIcon from '../components/AbilityIcon';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -273,7 +274,7 @@ export default function HabitFormScreen() {
                           ]}
                           onPress={() => setSelectedAbility(key)}
                         >
-                          <MaterialCommunityIcons name={meta.icon as any} size={22} color={meta.color} />
+                          <AbilityIcon ability={key} width={22} height={22} />
                           <Text style={[s.abilityTileLabel, { color: meta.color }]}>{meta.label}</Text>
                         </Pressable>
                       );
@@ -395,7 +396,7 @@ export default function HabitFormScreen() {
                   ]}
                   onPress={() => setLinkedAbility(selected ? undefined : key)}
                 >
-                  <MaterialCommunityIcons name={meta.icon as any} size={14} color={selected ? meta.color : TEXT_MUTED} />
+                  <AbilityIcon ability={key} width={14} height={14} />
                   <Text style={[s.abilChipText, selected && { color: meta.color }]}>{meta.abbr}</Text>
                 </Pressable>
               );
