@@ -52,6 +52,7 @@ export type CampaignCompletion = {
   successfulChecks: number;
   xpEarned: number;
   choiceLog: ChoiceLogEntry[];
+  endingSceneId?: string;
 };
 
 export type AppState = {

@@ -36,9 +36,8 @@ export default function HabitRow({ habit, onPress, onEdit, onDelete, scheduleLab
   const done = isDoneToday(habit);
   const streak = currentStreak(habit);
   const count = getTodayCount(habit);
-  const accentColor = habit.linkedAbility
-    ? ABILITY_META[habit.linkedAbility].color
-    : habit.color;
+  const linkedAbilMeta = habit.linkedAbility ? ABILITY_META[habit.linkedAbility] : null;
+  const accentColor = linkedAbilMeta?.color ?? habit.color;
   const translateX = useRef(new Animated.Value(0)).current;
 
   const panResponder = useRef(
@@ -87,13 +86,15 @@ export default function HabitRow({ habit, onPress, onEdit, onDelete, scheduleLab
 
   return (
     <View style={s.container}>
-      <View style={s.deleteBg}>
-        <Text style={s.deleteLabel}>DELETE</Text>
-      </View>
+      {!disabled && (
+        <View style={s.deleteBg}>
+          <Text style={s.deleteLabel}>DELETE</Text>
+        </View>
+      )}
 
       <Animated.View
         style={[s.row, { borderLeftColor: borderColor }, disabled && s.rowDisabled, { transform: [{ translateX }] }]}
-        {...panResponder.panHandlers}
+        {...(disabled ? {} : panResponder.panHandlers)}
       >
         <Pressable
           style={s.pressable}
@@ -127,14 +128,11 @@ export default function HabitRow({ habit, onPress, onEdit, onDelete, scheduleLab
                 <Text style={[s.streakText, { color: accentColor }]}>{streak}</Text>
               </View>
             )}
-            {habit.linkedAbility && (() => {
-              const meta = ABILITY_META[habit.linkedAbility];
-              return (
-                <View style={[s.abilBadge, { backgroundColor: meta.color + '20', borderColor: meta.color + '50' }]}>
-                  <Text style={[s.abilText, { color: meta.color }]}>{meta.abbr}</Text>
-                </View>
-              );
-            })()}
+            {linkedAbilMeta && (
+              <View style={[s.abilBadge, { backgroundColor: linkedAbilMeta.color + '20', borderColor: linkedAbilMeta.color + '50' }]}>
+                <Text style={[s.abilText, { color: linkedAbilMeta.color }]}>{linkedAbilMeta.abbr}</Text>
+              </View>
+            )}
           </View>
         </Pressable>
       </Animated.View>

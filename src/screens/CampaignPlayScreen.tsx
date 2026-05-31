@@ -42,7 +42,9 @@ export default function CampaignPlayScreen({ navigation, route }: Props) {
   const existingCompletion = state.campaignCompletions.find(c => c.campaignId === campaignId);
 
   const [started, setStarted] = useState(!!existingCompletion);
-  const [sceneId, setSceneId] = useState(existingCompletion ? 'completion' : campaign.startScene);
+  const [sceneId, setSceneId] = useState(
+    existingCompletion ? (existingCompletion.endingSceneId ?? 'ending_victory') : campaign.startScene
+  );
   const [successfulChecks, setSuccessfulChecks] = useState(existingCompletion?.successfulChecks ?? 0);
   const [choicesDone, setChoicesDone] = useState(existingCompletion ? campaign.totalChoiceScreens : 0);
   const [checkOverlay, setCheckOverlay] = useState<CheckOverlay | null>(null);
@@ -109,7 +111,7 @@ export default function CampaignPlayScreen({ navigation, route }: Props) {
   }
 
   function handleClaimReward() {
-    const comp = campaign.scenes['completion'];
+    const comp = scene;
     if (comp.type !== 'completion') return;
     const xpEarned = comp.baseXp + successfulChecks * comp.bonusXpPerCheck;
     completeCampaign({
@@ -118,6 +120,7 @@ export default function CampaignPlayScreen({ navigation, route }: Props) {
       successfulChecks,
       xpEarned,
       choiceLog,
+      endingSceneId: sceneId,
     });
     setRewardClaimed(true);
   }
@@ -239,7 +242,7 @@ export default function CampaignPlayScreen({ navigation, route }: Props) {
       <SafeAreaView style={s.safe} edges={['top']}>
         <StatusBar barStyle="light-content" />
         {header}
-        <ScrollView style={s.scroll} contentContainerStyle={s.scrollPad}>
+        <ScrollView style={s.scroll} contentContainerStyle={[s.scrollPad, { paddingBottom: footerPad }]}>
           <Text style={s.sceneTitle}>{scene.title}</Text>
           <Text style={s.setupProse}>{scene.prose}</Text>
           <View style={s.choicesWrap}>
@@ -287,10 +290,10 @@ export default function CampaignPlayScreen({ navigation, route }: Props) {
 
   // ── Completion scene ──────────────────────────────────────────────────────
   if (scene.type === 'completion') {
-    const comp = campaign.scenes['completion'];
+    const comp = scene;
     if (comp.type !== 'completion') return null;
     const clampedChecks = Math.min(successfulChecks, 3) as 0 | 1 | 2 | 3;
-    const totalXp = comp.baseXp + successfulChecks * comp.bonusXpPerCheck;
+    const campaignXp = comp.baseXp + successfulChecks * comp.bonusXpPerCheck;
 
     return (
       <SafeAreaView style={s.safe} edges={['top']}>
@@ -319,7 +322,7 @@ export default function CampaignPlayScreen({ navigation, route }: Props) {
             )}
             <View style={[s.xpRow, s.xpTotalRow]}>
               <Text style={s.xpTotalLabel}>Total</Text>
-              <Text style={s.xpTotalVal}>+{totalXp} XP</Text>
+              <Text style={s.xpTotalVal}>+{campaignXp} XP</Text>
             </View>
           </View>
 
@@ -348,7 +351,7 @@ export default function CampaignPlayScreen({ navigation, route }: Props) {
             </Pressable>
           ) : (
             <Pressable style={[s.continueBtn, s.claimBtn]} onPress={handleClaimReward}>
-              <Text style={s.continueBtnText}>Claim +{totalXp} XP  ⚡</Text>
+              <Text style={s.continueBtnText}>Claim +{campaignXp} XP  ⚡</Text>
             </Pressable>
           )}
         </View>

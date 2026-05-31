@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { currentStreak, isDoneToday } from '../dates';
+import { supabase } from '../lib/supabase';
+import { clearAllRemote } from '../lib/sync';
 import { useAppStore } from '../store';
 import {
   BG, BORDER, CRIMSON, GOLD, GOLD_DIM, SEPARATOR, SURFACE, SURFACE2,
@@ -19,7 +21,7 @@ import {
 import { getLevelInfo, XP_DAILY, XP_PER_REP, XP_WEEKLY } from '../xp';
 
 export default function ProfileScreen() {
-  const { state, addXp, resetXp, deleteCharacter, clearAll } = useAppStore();
+  const { state, addXp, resetXp, deleteCharacter, clearAll, resetCampaigns } = useAppStore();
   const { habits, totalXp, character } = state;
   const { level, currentXp, nextLevelXp } = getLevelInfo(totalXp);
   const pct = nextLevelXp > 0 ? currentXp / nextLevelXp : 0;
@@ -36,7 +38,7 @@ export default function ProfileScreen() {
       return h.createdAt < min ? h.createdAt : min;
     }, null);
     return { doneToday, bestStreak, totalCompletions, earliest };
-  }, [habits, totalXp]);
+  }, [habits]);
 
   const since = stats.earliest
     ? new Date(stats.earliest).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
@@ -108,6 +110,22 @@ export default function ProfileScreen() {
           <LoreLine icon="trending-up" text="Each rank demands greater deeds" />
         </View>
 
+        {/* Account */}
+        <SectionLabel title="ACCOUNT" muted />
+        <View style={s.devCard}>
+          <Pressable
+            style={({ pressed }) => [db.btn, pressed && { opacity: 0.6 }]}
+            onPress={() =>
+              Alert.alert('Sign Out?', 'You can sign back in any time — your data is safe.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Sign Out', style: 'destructive', onPress: () => supabase.auth.signOut() },
+              ])
+            }
+          >
+            <Text style={db.label}>Sign Out</Text>
+          </Pressable>
+        </View>
+
         {/* Dev tools */}
         <SectionLabel title="DUNGEON MASTER TOOLS" muted />
         <View style={s.devCard}>
@@ -133,10 +151,20 @@ export default function ProfileScreen() {
                 { text: 'Re-roll', style: 'destructive', onPress: deleteCharacter },
               ])} />
           </View>
+          <View style={s.devRow}>
+            <DevBtn label="Reset Campaigns" danger onPress={() =>
+              Alert.alert('Reset Campaign Progress?', 'All completed campaigns will be marked as available again.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Reset', style: 'destructive', onPress: resetCampaigns },
+              ])} />
+          </View>
           <DevBtn label="Clear All Data" danger onPress={() =>
-            Alert.alert('Clear All Data?', 'Wipe all quests, XP, and character?', [
+            Alert.alert('Clear All Data?', 'Wipe all quests, XP, character, and cloud data?', [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Wipe', style: 'destructive', onPress: clearAll },
+              { text: 'Wipe', style: 'destructive', onPress: async () => {
+                await clearAll();
+                clearAllRemote().catch(() => {});
+              }},
             ])} />
         </View>
 
@@ -248,14 +276,12 @@ const sc = StyleSheet.create({
     width: '47%', backgroundColor: SURFACE, borderRadius: 12,
     borderWidth: 1, borderColor: BORDER, padding: 16, alignItems: 'center', gap: 4,
   },
-  icon: { fontSize: 22 },
   value: { fontSize: 24, fontWeight: '900', color: GOLD },
   label: { fontSize: 11, color: TEXT_DIM },
 });
 
 const ll = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  emoji: { fontSize: 16, width: 22, textAlign: 'center' },
   text: { fontSize: 13, color: TEXT_DIM, flex: 1, lineHeight: 18 },
 });
 

@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -81,17 +81,22 @@ export default function CalendarScreen() {
     else setMonth(m => m + 1);
   }
 
-  const totalThisMonth = Array.from({ length: daysInMonth }, (_, i) => {
-    const d = `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
-    return totalCompletionsOnDate(habits, d);
-  }).reduce((a, b) => a + b, 0);
+  const totalThisMonth = useMemo(() =>
+    Array.from({ length: daysInMonth }, (_, i) => {
+      const d = `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
+      return totalCompletionsOnDate(habits, d);
+    }).reduce((a, b) => a + b, 0),
+  [habits, year, month, daysInMonth]);
 
-  const cells: (number | null)[] = [
+  const cells = useMemo<(number | null)[]>(() => [
     ...Array(mondayOffset).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
+  ], [mondayOffset, daysInMonth]);
 
-  const dayHabits = habits.filter(h => isScheduledForDate(h, selectedDate));
+  const dayHabits = useMemo(
+    () => habits.filter(h => isScheduledForDate(h, selectedDate)),
+    [habits, selectedDate]
+  );
   const isFutureSelected = selectedDate > today;
 
   return (
@@ -365,5 +370,4 @@ const dh = StyleSheet.create({
   abilTag: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, marginTop: 1 },
   countTag: { fontSize: 10, color: TEXT_MUTED, marginTop: 1 },
   iconBtn: { padding: 4 },
-  iconText: { fontSize: 16 },
 });

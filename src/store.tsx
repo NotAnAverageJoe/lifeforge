@@ -5,9 +5,20 @@ import React, {
   useContext,
   useEffect,
   useReducer,
+  useRef,
 } from 'react';
 import { todayKey } from './dates';
-import { cancelAllNotifications, cancelHabitReminders } from './notifications';
+import {
+  deleteCharacterRemote,
+  deleteCampaignCompletionsRemote,
+  deleteHabitRemote,
+  pushCampaignCompletion,
+  pushCharacter,
+  pushHabit,
+  pushXp,
+  type RemoteData,
+} from './lib/sync';
+import { cancelAllNotifications } from './notifications';
 import type { AppState, CampaignCompletion, Character, Habit } from './types';
 import {
   getLevelInfo,
@@ -33,6 +44,7 @@ const INITIAL_STATE: AppState = {
 
 type Action =
   | { type: 'LOAD'; payload: { habits: Habit[]; totalXp: number; character: Character | null; campaignCompletions: CampaignCompletion[] } }
+  | { type: 'MERGE_REMOTE'; payload: RemoteData }
   | { type: 'ADD_HABIT'; payload: Habit }
   | { type: 'UPDATE_HABIT'; payload: Habit }
   | { type: 'DELETE_HABIT'; payload: string }
@@ -43,12 +55,28 @@ type Action =
   | { type: 'COMPLETE_ONBOARDING'; payload: Character }
   | { type: 'DELETE_CHARACTER' }
   | { type: 'CLEAR_ALL' }
-  | { type: 'COMPLETE_CAMPAIGN'; payload: CampaignCompletion };
+  | { type: 'COMPLETE_CAMPAIGN'; payload: CampaignCompletion }
+  | { type: 'RESET_CAMPAIGNS' };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'LOAD':
       return { ...state, ...action.payload, isLoaded: true };
+
+    case 'MERGE_REMOTE': {
+      const remote = action.payload;
+      const remoteHabitIds = new Set(remote.habits.map(h => h.id));
+      const localOnlyHabits = state.habits.filter(h => !remoteHabitIds.has(h.id));
+      const remoteCampIds = new Set(remote.campaignCompletions.map(c => c.campaignId));
+      const localOnlyCamps = state.campaignCompletions.filter(c => !remoteCampIds.has(c.campaignId));
+      return {
+        ...state,
+        habits: [...remote.habits, ...localOnlyHabits],
+        character: remote.character ?? state.character,
+        totalXp: Math.max(remote.totalXp, state.totalXp),
+        campaignCompletions: [...remote.campaignCompletions, ...localOnlyCamps],
+      };
+    }
 
     case 'COMPLETE_CAMPAIGN': {
       const newTotalXp = Math.max(0, state.totalXp + action.payload.xpEarned);
@@ -167,6 +195,9 @@ function reducer(state: AppState, action: Action): AppState {
     case 'CLEAR_ALL':
       return { ...INITIAL_STATE, isLoaded: true };
 
+    case 'RESET_CAMPAIGNS':
+      return { ...state, campaignCompletions: [] };
+
     default:
       return state;
   }
@@ -186,6 +217,9 @@ type Ctx = {
   deleteCharacter: () => void;
   clearAll: () => void;
   completeCampaign: (completion: CampaignCompletion) => void;
+  resetCampaigns: () => void;
+  mergeRemote: (remote: RemoteData) => void;
+  clearLocal: () => void;
 };
 
 const AppContext = createContext<Ctx | null>(null);
@@ -233,6 +267,10 @@ async function loadData(): Promise<{ habits: Habit[]; totalXp: number; character
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
 
+  // Always points to the latest state — safe to read from setTimeout callbacks
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
   useEffect(() => {
     loadData().then(data => dispatch({ type: 'LOAD', payload: data }));
   }, []);
@@ -250,30 +288,82 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   }, [state.habits, state.totalXp, state.character, state.campaignCompletions, state.isLoaded]);
 
-  const addHabit = useCallback((habit: Habit) => dispatch({ type: 'ADD_HABIT', payload: habit }), []);
-  const updateHabit = useCallback((habit: Habit) => dispatch({ type: 'UPDATE_HABIT', payload: habit }), []);
-  const deleteHabit = useCallback((id: string) => dispatch({ type: 'DELETE_HABIT', payload: id }), []);
-  const toggleCompletion = useCallback(
-    (habitId: string) =>
-      dispatch({ type: 'TOGGLE_COMPLETION', payload: { habitId, date: todayKey() } }),
-    []
-  );
+  // Reads post-dispatch state from stateRef after React's batch settles.
+  function afterSync(fn: (s: AppState) => void): void {
+    setTimeout(() => fn(stateRef.current), 0);
+  }
+
+  const addHabit = useCallback((habit: Habit) => {
+    dispatch({ type: 'ADD_HABIT', payload: habit });
+    pushHabit(habit).catch(() => {});
+  }, []);
+
+  const updateHabit = useCallback((habit: Habit) => {
+    dispatch({ type: 'UPDATE_HABIT', payload: habit });
+    pushHabit(habit).catch(() => {});
+  }, []);
+
+  const deleteHabit = useCallback((id: string) => {
+    dispatch({ type: 'DELETE_HABIT', payload: id });
+    deleteHabitRemote(id).catch(() => {});
+  }, []);
+
+  const toggleCompletion = useCallback((habitId: string) => {
+    dispatch({ type: 'TOGGLE_COMPLETION', payload: { habitId, date: todayKey() } });
+    afterSync(s => {
+      const habit = s.habits.find(h => h.id === habitId);
+      if (habit) pushHabit(habit).catch(() => {});
+      pushXp(s.totalXp).catch(() => {});
+      if (s.character) pushCharacter(s.character).catch(() => {});
+    });
+  }, []);
+
   const dismissLevelUp = useCallback(() => dispatch({ type: 'DISMISS_LEVEL_UP' }), []);
-  const addXp = useCallback((amount: number) => dispatch({ type: 'ADD_XP', payload: amount }), []);
-  const resetXp = useCallback(() => dispatch({ type: 'RESET_XP' }), []);
-  const completeOnboarding = useCallback(
-    (character: Character) => dispatch({ type: 'COMPLETE_ONBOARDING', payload: character }),
-    []
-  );
-  const deleteCharacter = useCallback(() => dispatch({ type: 'DELETE_CHARACTER' }), []);
+
+  const addXp = useCallback((amount: number) => {
+    dispatch({ type: 'ADD_XP', payload: amount });
+    afterSync(s => pushXp(s.totalXp).catch(() => {}));
+  }, []);
+
+  const resetXp = useCallback(() => {
+    dispatch({ type: 'RESET_XP' });
+    pushXp(0).catch(() => {});
+  }, []);
+
+  const completeOnboarding = useCallback((character: Character) => {
+    dispatch({ type: 'COMPLETE_ONBOARDING', payload: character });
+    pushCharacter(character).catch(() => {});
+    afterSync(s => pushXp(s.totalXp).catch(() => {}));
+  }, []);
+
+  const deleteCharacter = useCallback(() => {
+    dispatch({ type: 'DELETE_CHARACTER' });
+    deleteCharacterRemote().catch(() => {});
+  }, []);
+
   const clearAll = useCallback(async () => {
     await cancelAllNotifications();
     dispatch({ type: 'CLEAR_ALL' });
+    // Does NOT delete from Supabase — call clearAllRemote() explicitly if needed
   }, []);
-  const completeCampaign = useCallback(
-    (completion: CampaignCompletion) => dispatch({ type: 'COMPLETE_CAMPAIGN', payload: completion }),
+
+  const completeCampaign = useCallback((completion: CampaignCompletion) => {
+    dispatch({ type: 'COMPLETE_CAMPAIGN', payload: completion });
+    pushCampaignCompletion(completion).catch(() => {});
+    afterSync(s => pushXp(s.totalXp).catch(() => {}));
+  }, []);
+
+  const resetCampaigns = useCallback(() => {
+    dispatch({ type: 'RESET_CAMPAIGNS' });
+    deleteCampaignCompletionsRemote().catch(() => {});
+  }, []);
+
+  const mergeRemote = useCallback(
+    (remote: RemoteData) => dispatch({ type: 'MERGE_REMOTE', payload: remote }),
     []
   );
+
+  const clearLocal = useCallback(() => dispatch({ type: 'CLEAR_ALL' }), []);
 
   return (
     <AppContext.Provider
@@ -281,7 +371,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         state, dispatch,
         addHabit, updateHabit, deleteHabit, toggleCompletion,
         dismissLevelUp, addXp, resetXp,
-        completeOnboarding, deleteCharacter, clearAll, completeCampaign,
+        completeOnboarding, deleteCharacter, clearAll, completeCampaign, resetCampaigns,
+        mergeRemote, clearLocal,
       }}
     >
       {children}

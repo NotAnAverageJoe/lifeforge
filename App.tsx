@@ -3,12 +3,16 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Felipa_400Regular, useFonts } from '@expo-google-fonts/felipa';
-import { useEffect } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import LevelUpModal from './src/components/LevelUpModal';
+import { supabase } from './src/lib/supabase';
+import { pullAll, pushAllLocal } from './src/lib/sync';
 import { scheduleDailyNudge } from './src/notifications';
 import AbilityDetailScreen from './src/screens/AbilityDetailScreen';
+import AuthScreen from './src/screens/AuthScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import CampaignPlayScreen from './src/screens/CampaignPlayScreen';
 import CampaignsScreen from './src/screens/CampaignsScreen';
@@ -78,15 +82,56 @@ function MainTabs() {
 }
 
 function AppShell() {
-  const { state, dismissLevelUp } = useAppStore();
+  const { state, dismissLevelUp, mergeRemote, clearLocal } = useAppStore();
   const [fontsLoaded] = useFonts({ Felipa_400Regular });
+  // undefined = still resolving, null = signed out, Session = signed in
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
+
+  // Always current — used in async callbacks to read post-render state
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     scheduleDailyNudge().catch(() => {});
+
+    async function syncOnSignIn() {
+      const remote = await pullAll().catch(() => null);
+      if (!remote) return;
+      mergeRemote(remote);
+      // If Supabase is empty (first sign-in from this account), push existing local data up
+      if (!remote.habits.length && !remote.character) {
+        const s = stateRef.current;
+        pushAllLocal(s.habits, s.character, s.totalXp, s.campaignCompletions).catch(() => {});
+      }
+    }
+
+    // Validate the cached session against the Supabase server on startup.
+    // getSession() reads locally without network; getUser() confirms the JWT is still valid.
+    // On network error, fall back to the cached session so offline startup still works.
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (!error && !user) { setSession(null); return; }
+      supabase.auth.getSession().then(({ data: { session: s } }) => {
+        setSession(s);
+        if (s) syncOnSignIn();
+      });
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === 'INITIAL_SESSION') return; // startup auth handled above by getUser()
+      setSession(s);
+      if (event === 'SIGNED_IN') syncOnSignIn();
+      if (event === 'SIGNED_OUT') clearLocal();
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  if (!state.isLoaded || !fontsLoaded) {
+  if (!state.isLoaded || !fontsLoaded || session === undefined) {
     return <View style={{ flex: 1, backgroundColor: BG }} />;
+  }
+
+  if (session === null) {
+    return <AuthScreen />;
   }
 
   if (state.character === null) {

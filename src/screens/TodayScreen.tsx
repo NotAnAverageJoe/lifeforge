@@ -3,7 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   FlatList,
@@ -27,17 +27,19 @@ import type { Character, Habit, RootStackParamList } from '../types';
 import { getAbilityLevelInfo, getLevelInfo } from '../xp';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEK_ORDER = [2, 3, 4, 5, 6, 7, 1];
 
 function buildScheduleLabel(habit: Habit): string {
   if (!habit.scheduledDays || habit.scheduledDays.length === 0) return '';
-  const WEEK_ORDER = [2, 3, 4, 5, 6, 7, 1];
-  const sorted = [...habit.scheduledDays].sort((a, b) => WEEK_ORDER.indexOf(a) - WEEK_ORDER.indexOf(b));
-  return sorted.map(d => DAY_NAMES[d - 1]).join(' · ');
+  return [...habit.scheduledDays]
+    .sort((a, b) => WEEK_ORDER.indexOf(a) - WEEK_ORDER.indexOf(b))
+    .map(d => DAY_NAMES[d - 1])
+    .join(' · ');
 }
 
 type ListItem =
   | { type: 'habit'; habit: Habit; isOffDay?: boolean }
-  | { type: 'section'; title: string };
+  | { type: 'section'; title: string; muted?: boolean };
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -45,21 +47,25 @@ export default function TodayScreen() {
   const navigation = useNavigation<Nav>();
   const { state, toggleCompletion, deleteHabit } = useAppStore();
   const { habits, totalXp, character } = state;
-  const [showAll, setShowAll] = useState(false);
-
   const today = todayKey();
-  const todayHabits = habits.filter(h => isScheduledForDate(h, today));
-  const offDayHabits = habits.filter(h => !isScheduledForDate(h, today));
 
-  const listData: ListItem[] = [
-    ...todayHabits.map(h => ({ type: 'habit' as const, habit: h })),
-    ...(showAll && offDayHabits.length > 0
-      ? [
-          { type: 'section' as const, title: 'Other Quests' },
-          ...offDayHabits.map(h => ({ type: 'habit' as const, habit: h, isOffDay: true })),
-        ]
-      : []),
-  ];
+  const { todayHabits, offDayHabits } = useMemo(() => ({
+    todayHabits: habits.filter(h => isScheduledForDate(h, today)),
+    offDayHabits: habits.filter(h => !isScheduledForDate(h, today)),
+  }), [habits, today]);
+
+  const listData = useMemo<ListItem[]>(() => {
+    const items: ListItem[] = [];
+    if (todayHabits.length > 0) {
+      items.push({ type: 'section', title: "Today's Quests" });
+      items.push(...todayHabits.map(h => ({ type: 'habit' as const, habit: h })));
+    }
+    if (offDayHabits.length > 0) {
+      items.push({ type: 'section', title: 'Other Quests', muted: true });
+      items.push(...offDayHabits.map(h => ({ type: 'habit' as const, habit: h, isOffDay: true })));
+    }
+    return items;
+  }, [todayHabits, offDayHabits]);
 
   const handleToggle = useCallback(
     (id: string) => {
@@ -102,16 +108,9 @@ export default function TodayScreen() {
           <Text style={s.date}>{dayLabel}</Text>
         </View>
         <View style={s.headerRight}>
-          <View style={s.headerActions}>
-            {offDayHabits.length > 0 && (
-              <Pressable onPress={() => setShowAll(v => !v)}>
-                <Text style={s.showAllBtn}>{showAll ? 'TODAY' : 'ALL'}</Text>
-              </Pressable>
-            )}
-            <Pressable onPress={() => navigation.navigate('Calendar')} hitSlop={8}>
-              <MaterialCommunityIcons name="calendar-month" size={22} color={GOLD} />
-            </Pressable>
-          </View>
+          <Pressable onPress={() => navigation.navigate('Calendar')} hitSlop={8}>
+            <MaterialCommunityIcons name="calendar-month" size={22} color={GOLD} />
+          </Pressable>
         </View>
       </View>
 
@@ -131,7 +130,7 @@ export default function TodayScreen() {
           <View style={s.emptyWrap}>
             <MaterialCommunityIcons name="sword-cross" size={48} color={TEXT_MUTED} />
             {habits.length > 0 ? (
-              <Text style={s.emptyText}>All clear for today.{'\n'}Tap "ALL" to view other quests.</Text>
+              <Text style={s.emptyText}>All clear for today.{'\n'}No quests scheduled.</Text>
             ) : (
               <Text style={s.emptyText}>No side quests yet.{'\n'}Tap + to forge your first one.</Text>
             )}
@@ -141,9 +140,9 @@ export default function TodayScreen() {
           if (item.type === 'section') {
             return (
               <View style={s.sectionHeader}>
-                <View style={s.sectionLine} />
-                <Text style={s.sectionTitle}>{item.title}</Text>
-                <View style={s.sectionLine} />
+                <View style={[s.sectionLine, item.muted && s.sectionLineMuted]} />
+                <Text style={[s.sectionTitle, item.muted && s.sectionTitleMuted]}>{item.title}</Text>
+                <View style={[s.sectionLine, item.muted && s.sectionLineMuted]} />
               </View>
             );
           }
@@ -264,9 +263,17 @@ function DailyAffirmation() {
         if (cached) { setAffirmation(cached); return; }
         fetch('https://www.affirmations.dev/')
           .then(r => r.json())
-          .then((data: { affirmation: string }) => {
-            setAffirmation(data.affirmation);
-            AsyncStorage.setItem(key, data.affirmation).catch(() => {});
+          .then((data: unknown) => {
+            const text =
+              data !== null &&
+              typeof data === 'object' &&
+              'affirmation' in data &&
+              typeof (data as Record<string, unknown>).affirmation === 'string'
+                ? (data as Record<string, string>).affirmation.slice(0, 200)
+                : null;
+            if (!text) throw new Error('invalid');
+            setAffirmation(text);
+            AsyncStorage.setItem(key, text).catch(() => {});
           })
           .catch(() => {
             const fb = FALLBACK_AFFIRMATIONS[Math.floor(Math.random() * FALLBACK_AFFIRMATIONS.length)];
@@ -313,23 +320,21 @@ const s = StyleSheet.create({
   headerLeft: { flex: 1 },
   title: { fontSize: 22, fontWeight: '900', color: GOLD, letterSpacing: 3 },
   date: { fontSize: 11, color: TEXT_DIM, marginTop: 2, letterSpacing: 0.3 },
-  headerRight: { alignItems: 'flex-end', gap: 6 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  showAllBtn: { fontSize: 10, fontWeight: '800', color: TEXT_DIM, letterSpacing: 1.5 },
-  calIcon: { fontSize: 20 },
+  headerRight: { alignItems: 'flex-end' },
   headerRule: { height: 1, backgroundColor: BORDER, marginHorizontal: 20, marginBottom: 12 },
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: 4, paddingVertical: 8,
   },
   sectionLine: { flex: 1, height: 1, backgroundColor: SEPARATOR },
+  sectionLineMuted: { backgroundColor: SEPARATOR, opacity: 0.4 },
   sectionTitle: {
     fontSize: 10, fontWeight: '800', color: TEXT_DIM,
     textTransform: 'uppercase', letterSpacing: 2,
   },
+  sectionTitleMuted: { color: TEXT_MUTED },
   list: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 100 },
   emptyWrap: { alignItems: 'center', marginTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyText: { textAlign: 'center', color: TEXT_DIM, fontSize: 15, lineHeight: 24 },
   fab: {
     position: 'absolute', bottom: 28, right: 24,
@@ -356,7 +361,6 @@ const cb = StyleSheet.create({
     backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER,
     alignItems: 'center', justifyContent: 'center',
   },
-  classIcon: { fontSize: 22 },
   nameBlock: { flex: 1 },
   charName: { fontSize: 16, fontWeight: '800', color: TEXT, letterSpacing: 0.2 },
   classLabel: { fontSize: 9, fontWeight: '800', color: TEXT_DIM, letterSpacing: 2, marginTop: 2 },
