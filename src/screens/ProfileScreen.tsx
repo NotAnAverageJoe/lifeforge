@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
 import {
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StatusBar,
@@ -124,6 +125,18 @@ export default function ProfileScreen() {
           >
             <Text style={db.label}>Sign Out</Text>
           </Pressable>
+        </View>
+
+        {/* Credits */}
+        <SectionLabel title="CREDITS" muted />
+        <View style={s.devCard}>
+          <Text style={cr.line}>Class icons by{' '}
+            <Text
+              style={cr.link}
+              onPress={() => Linking.openURL('https://github.com/intrinsical/tw-dnd')}
+            >intrinsical</Text>
+            {' '}· tw-dnd · GPL-3.0
+          </Text>
         </View>
 
         {/* Dev tools */}
@@ -283,6 +296,11 @@ const sc = StyleSheet.create({
 const ll = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   text: { fontSize: 13, color: TEXT_DIM, flex: 1, lineHeight: 18 },
+});
+
+const cr = StyleSheet.create({
+  line: { fontSize: 12, color: TEXT_MUTED, lineHeight: 18 },
+  link: { color: GOLD, fontWeight: '600' },
 });
 
 const db = StyleSheet.create({
