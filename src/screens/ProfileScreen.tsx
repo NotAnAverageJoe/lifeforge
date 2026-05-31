@@ -130,7 +130,7 @@ export default function ProfileScreen() {
         {/* Credits */}
         <SectionLabel title="CREDITS" muted />
         <View style={s.devCard}>
-          <Text style={cr.line}>Class icons by{' '}
+          <Text style={cr.line}>Class & ability icons by{' '}
             <Text
               style={cr.link}
               onPress={() => Linking.openURL('https://github.com/intrinsical/tw-dnd')}

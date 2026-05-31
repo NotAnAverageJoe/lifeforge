@@ -58,7 +58,7 @@ App.tsx          # provider tree + onboarding gate + navigation setup
 
 ## Acknowledgements
 
-- **Class icons** — sourced from [intrinsical/tw-dnd](https://github.com/intrinsical/tw-dnd), a TiddlyWiki D&D 5e toolkit. Licensed under GPL-3.0.
+- **Class & ability icons** — sourced from [intrinsical/tw-dnd](https://github.com/intrinsical/tw-dnd), a TiddlyWiki D&D 5e toolkit. Licensed under GPL-3.0.
 
 ## License
 
